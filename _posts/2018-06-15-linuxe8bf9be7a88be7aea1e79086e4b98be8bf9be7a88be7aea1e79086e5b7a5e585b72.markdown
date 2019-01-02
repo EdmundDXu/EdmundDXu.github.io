@@ -1,0 +1,847 @@
+---
+author: edmund
+comments: true
+date: 2018-06-15 09:21:30+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/06/15/linux%e8%bf%9b%e7%a8%8b%e7%ae%a1%e7%90%86%e4%b9%8b%e8%bf%9b%e7%a8%8b%e7%ae%a1%e7%90%86%e5%b7%a5%e5%85%b72/
+slug: linux%e8%bf%9b%e7%a8%8b%e7%ae%a1%e7%90%86%e4%b9%8b%e8%bf%9b%e7%a8%8b%e7%ae%a1%e7%90%86%e5%b7%a5%e5%85%b72
+title: Linux进程管理之进程管理工具2
+wordpress_id: 406
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- linux
+- 命令
+- 进程管理
+---
+
+本章节上接[Linux进程管理之进程管理工具1](http://118.25.17.78/blog/2018/06/12/linux%e8%bf%9b%e7%a8%8b%e7%ae%a1%e7%90%86%e4%b9%8b%e8%bf%9b%e7%a8%8b%e7%ae%a1%e7%90%86%e5%b7%a5%e5%85%b71/)，由于章节篇幅问题，故拆分成多章做讲解。
+
+
+
+
+# vmstat命令
+
+
+
+
+vmstat命令是属于老一辈的招牌命令，和ifconfig一样，命令十分易用且强大。vmstat（Virtual Memory Statistics）命令用于报告关于进程状态、内存使用情况、分页情况、块I/O情况、信号量、磁盘使用情况、cpu使用情况等信息。
+
+
+
+
+vmstat的用法很简单 : **vmstat [options] [delay [count]] **
+
+
+
+
+其中**options**是命令的选项，**delay**是vmstat的刷新间隔，**count**是vmstat命令的刷新次数，默认情况下vmstat只输出一次。
+
+
+
+
+比如每秒刷新一次，一共输出5次就是 : vmstat 1 5
+
+
+
+    
+    [root@edu ~]# vmstat 1 5
+    procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+     r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+     1  0      0 409004   2108 463468    0    0     6     5   68   48  0  0 100  0  0
+     0  0      0 409004   2108 463468    0    0     0     0  196  129  0  1 100  0  0
+     0  0      0 408972   2108 463468    0    0     0     0  139   91  0  0 100  0  0
+     0  0      0 408972   2108 463468    0    0     0     0  167  114  0  0 100  0  0
+     0  0      0 408972   2108 463468    0    0     0     0  160  107  1  0 100  0  0
+    
+
+
+
+
+**需要注意的是，vmstat的第一个输出为从开机至现在的平均统计信息，而之后的输出为取样周期内的统计信息，比如上述第二个输出即为1秒内的统计信息。**
+
+
+
+
+ 
+
+
+
+
+## 各字段的解释
+
+
+
+
+### Procs
+
+
+
+
+**r**: 处于运行队列中的进程数量。（包括运行中或者等待运行的进程）  
+
+**b**: 处于不可中断睡眠的进程数量。
+
+
+
+
+### Memory
+
+
+
+
+**swpd**: 虚拟内存/交换分区的使用量。  
+
+**free**: 未被使用的内存。  
+
+**buff**: 用于缓冲（buffer）的内存用量。  
+
+**cache**: 用于缓存（cache）的内存用量。  
+
+**inact**: 非活跃内存的用量。(-a option)  
+
+**active**: 活跃内存的用量。(-a option)
+
+
+
+
+### Swap
+
+
+
+
+**si**: 每秒从磁盘换入至内存的内存量。  
+
+**so**: 每秒从内存换出至磁盘的内存量
+
+
+
+
+### IO
+
+
+
+
+**bi**: 每秒从块设备读入的数据块数。  
+
+**bo**: 每秒写入至块设备中的数据块数。
+
+
+
+
+### System
+
+
+
+
+**in**: 每秒的中断次数。  
+
+**cs**: 每秒的上下文切换次数。
+
+
+
+
+### CPU
+
+
+
+
+下面的时间都是占用cpu总时间的百分比。  
+
+**us**: 运行用户空间进程消耗的cpu时间。（包括niced和un-niced进程）  
+
+**sy**: 运行内核空间进程消耗的cpu时间。  
+
+**id**: cpu空闲时间。  
+
+**wa**: 等待I/O完成所消耗的时间。  
+
+**st**: 被虚拟机偷走的时间。
+
+
+
+
+ 
+
+
+
+
+vmstat命令有一个常用选项 -s ,可以显示各种事件计数器和内存的统计信息。这些信息可以通过查看伪文件系统/proc得到（**cat /proc/meminfo**）。
+
+
+
+    
+    [root@edu ~]# vmstat -s
+           999720 K total memory
+           124300 K used memory
+           317748 K active memory
+           141440 K inactive memory
+           409104 K free memory
+             2108 K buffer memory
+           464208 K swap cache
+           975868 K total swap
+                0 K used swap
+           975868 K free swap
+             2983 non-nice user cpu ticks
+               17 nice user cpu ticks
+             9481 system cpu ticks
+          6123265 idle cpu ticks
+             3230 IO-wait cpu ticks
+                0 IRQ cpu ticks
+              492 softirq cpu ticks
+                0 stolen cpu ticks
+           287734 pages paged in
+           257996 pages paged out
+                0 pages swapped in
+                0 pages swapped out
+          4127854 interrupts
+          2919706 CPU context switches
+       1528761363 boot time
+             3086 forks
+    
+
+
+
+    
+    [root@edu ~]# cat /proc/meminfo 
+    MemTotal:         999720 kB
+    MemFree:          409072 kB
+    MemAvailable:     680272 kB
+    Buffers:            2108 kB
+    Cached:           382404 kB
+    SwapCached:            0 kB
+    Active:           317556 kB
+    Inactive:         141440 kB
+    Active(anon):      74956 kB
+    Inactive(anon):     6436 kB
+    Active(file):     242600 kB
+    Inactive(file):   135004 kB
+    Unevictable:           0 kB
+    Mlocked:               0 kB
+    SwapTotal:        975868 kB
+    SwapFree:         975868 kB
+    Dirty:                 0 kB
+    Writeback:             0 kB
+    AnonPages:         74516 kB
+    Mapped:            25076 kB
+    Shmem:              6908 kB
+    Slab:              81804 kB
+    SReclaimable:      42640 kB
+    SUnreclaim:        39164 kB
+    KernelStack:        4048 kB
+    PageTables:         4332 kB
+    NFS_Unstable:          0 kB
+    Bounce:                0 kB
+    WritebackTmp:          0 kB
+    CommitLimit:     1475728 kB
+    Committed_AS:     264364 kB
+    VmallocTotal:   34359738367 kB
+    VmallocUsed:      180828 kB
+    VmallocChunk:   34359310332 kB
+    HardwareCorrupted:     0 kB
+    AnonHugePages:     14336 kB
+    HugePages_Total:       0
+    HugePages_Free:        0
+    HugePages_Rsvd:        0
+    HugePages_Surp:        0
+    Hugepagesize:       2048 kB
+    DirectMap4k:       61312 kB
+    DirectMap2M:      987136 kB
+    DirectMap1G:           0 kB
+    
+
+
+
+
+
+
+
+# pmap命令
+
+
+
+
+pmap命令用于打印进程的地址空间信息。默认情况下，pmap的每行会输出一个映射（mapping）。**关于映射，首先我们知道内存区域中，在堆（heap）和栈（stack）之间有一块内存映射区（Memory Mapping Region），内存映射区中都是磁盘文件的映射，也就是说，将磁盘文件关联至了内存映射区中。所谓一个映射，就是一个磁盘文件和内存映射区中的一段空间的关联关系。**
+
+
+
+
+不过pmap命令似乎是SunOS中的命令，在Linux系统上缺失了许多功能。（**可以参考 Oracle Linux制作的pmap的man手册 : [pmap(1)](https://docs.oracle.com/cd/E19683-01/816-0210/6m6nb7mhj/index.html)**）
+
+
+
+
+pmap的命令用法很简单 : **pmap [options] pid [...]**
+
+
+
+
+**options**为命令选项，后面的**pid**为需要查看的进程pid，可以指定多个pid，每个pid之间用空格分隔。
+
+
+
+
+
+
+
+## 常用选项
+
+
+
+
+**-x, --extended** : 以拓展格式打印。
+
+
+
+
+**-p, --show-path** : 显示映射文件的完整路径。
+
+
+
+    
+    [root@edu ~]# pmap $$      # $$表示当前进程的PID，由于当前进程为bash，故此处$$为bash的pid
+    1122:   -bash
+    0000000000400000    884K r-x-- bash
+    00000000006dc000      4K r---- bash
+    00000000006dd000     36K rw--- bash
+    00000000006e6000     24K rw---   [ anon ]
+    00000000008bb000    396K rw---   [ anon ]
+    00007fb8ba8ec000 103588K r---- locale-archive
+    00007fb8c0e15000     48K r-x-- libnss_files-2.17.so
+    00007fb8c0e21000   2044K ----- libnss_files-2.17.so
+    00007fb8c1020000      4K r---- libnss_files-2.17.so
+    00007fb8c1021000      4K rw--- libnss_files-2.17.so
+    00007fb8c1022000     24K rw---   [ anon ]
+    00007fb8c1028000   1760K r-x-- libc-2.17.so
+    00007fb8c11e0000   2048K ----- libc-2.17.so
+    00007fb8c13e0000     16K r---- libc-2.17.so
+    00007fb8c13e4000      8K rw--- libc-2.17.so
+    00007fb8c13e6000     20K rw---   [ anon ]
+    00007fb8c13eb000      8K r-x-- libdl-2.17.so
+    00007fb8c13ed000   2048K ----- libdl-2.17.so
+    00007fb8c15ed000      4K r---- libdl-2.17.so
+    00007fb8c15ee000      4K rw--- libdl-2.17.so
+    00007fb8c15ef000    148K r-x-- libtinfo.so.5.9
+    00007fb8c1614000   2048K ----- libtinfo.so.5.9
+    00007fb8c1814000     16K r---- libtinfo.so.5.9
+    00007fb8c1818000      4K rw--- libtinfo.so.5.9
+    00007fb8c1819000    132K r-x-- ld-2.17.so
+    00007fb8c1a2d000     20K rw---   [ anon ]
+    00007fb8c1a32000     28K r--s- gconv-modules.cache
+    00007fb8c1a39000      4K rw---   [ anon ]
+    00007fb8c1a3a000      4K r---- ld-2.17.so
+    00007fb8c1a3b000      4K rw--- ld-2.17.so
+    00007fb8c1a3c000      4K rw---   [ anon ]
+    00007ffdc1984000    132K rw---   [ stack ]
+    00007ffdc19bb000      8K r-x--   [ anon ]
+    ffffffffff600000      4K r-x--   [ anon ]
+     total           115528K
+    
+
+
+
+
+ 
+
+
+
+
+## 上述打印的信息一共有4列，下面我对每一列做一下解释:
+
+
+
+
+第一列表示的是Virtual Address，也就是内存空间映射（mapping）的起始虚拟地址。如果一个mapping有多个虚拟地址，则多个虚拟地址按照升序排列。
+
+
+
+
+第二列表示的是Virtual Mapping Size，就是每个mapping所占据的虚拟空间。
+
+
+
+
+第三列表示的是Permissions/Flags，也就是对该mapping的操作权限。r表示该mapping可以被进程读，w表示该mapping可以被进程写，x表示该mapping中的指令可以被进程执行。
+
+
+
+
+第四列表示的是Mapping Name，也就是对该mapping的描述性名称，一般可以分为**mapped file**和**Anonymous memory**。其中mapped file就是被映射的文件，Anonymous memory指的是一段无法关联至任何命名对象或者文件系统中的文件的内存，一般Anonymous memory会显示为[ anon ],而一些常见的Anonymous memory则会被特别表示出来，比如[ heap ]和[ stack ]，分别表示进程用到的堆和栈。
+
+
+
+
+
+
+
+实际上，除了通过pmap之外，也可以直接通过伪文件系统/proc查看进程的mapping表，每个进程的mapping表所在的路径是 : **/proc/PID/maps**。其中PID即为进程的PID号。通过查看/proc的方式看到的信息有点类似于pmap使用-x选项。
+
+
+
+    
+    [root@edu ~]# cat /proc/1122/maps
+    00400000-004dd000 r-xp 00000000 00:23 8006                               /usr/bin/bash
+    006dc000-006dd000 r--p 000dc000 00:23 8006                               /usr/bin/bash
+    006dd000-006e6000 rw-p 000dd000 00:23 8006                               /usr/bin/bash
+    006e6000-006ec000 rw-p 00000000 00:00 0 
+    008bb000-0091e000 rw-p 00000000 00:00 0                                  [heap]
+    7fb8ba8ec000-7fb8c0e15000 r--p 00000000 00:23 7954                       /usr/lib/locale/locale-archive
+    7fb8c0e15000-7fb8c0e21000 r-xp 00000000 00:23 7650                       /usr/lib64/libnss_files-2.17.so
+    7fb8c0e21000-7fb8c1020000 ---p 0000c000 00:23 7650                       /usr/lib64/libnss_files-2.17.so
+    7fb8c1020000-7fb8c1021000 r--p 0000b000 00:23 7650                       /usr/lib64/libnss_files-2.17.so
+    7fb8c1021000-7fb8c1022000 rw-p 0000c000 00:23 7650                       /usr/lib64/libnss_files-2.17.so
+    7fb8c1022000-7fb8c1028000 rw-p 00000000 00:00 0 
+    7fb8c1028000-7fb8c11e0000 r-xp 00000000 00:23 7632                       /usr/lib64/libc-2.17.so
+    7fb8c11e0000-7fb8c13e0000 ---p 001b8000 00:23 7632                       /usr/lib64/libc-2.17.so
+    7fb8c13e0000-7fb8c13e4000 r--p 001b8000 00:23 7632                       /usr/lib64/libc-2.17.so
+    7fb8c13e4000-7fb8c13e6000 rw-p 001bc000 00:23 7632                       /usr/lib64/libc-2.17.so
+    7fb8c13e6000-7fb8c13eb000 rw-p 00000000 00:00 0 
+    7fb8c13eb000-7fb8c13ed000 r-xp 00000000 00:23 7638                       /usr/lib64/libdl-2.17.so
+    7fb8c13ed000-7fb8c15ed000 ---p 00002000 00:23 7638                       /usr/lib64/libdl-2.17.so
+    7fb8c15ed000-7fb8c15ee000 r--p 00002000 00:23 7638                       /usr/lib64/libdl-2.17.so
+    7fb8c15ee000-7fb8c15ef000 rw-p 00003000 00:23 7638                       /usr/lib64/libdl-2.17.so
+    7fb8c15ef000-7fb8c1614000 r-xp 00000000 00:23 7999                       /usr/lib64/libtinfo.so.5.9
+    7fb8c1614000-7fb8c1814000 ---p 00025000 00:23 7999                       /usr/lib64/libtinfo.so.5.9
+    7fb8c1814000-7fb8c1818000 r--p 00025000 00:23 7999                       /usr/lib64/libtinfo.so.5.9
+    7fb8c1818000-7fb8c1819000 rw-p 00029000 00:23 7999                       /usr/lib64/libtinfo.so.5.9
+    7fb8c1819000-7fb8c183a000 r-xp 00000000 00:23 7625                       /usr/lib64/ld-2.17.so
+    7fb8c1a2d000-7fb8c1a32000 rw-p 00000000 00:00 0 
+    7fb8c1a32000-7fb8c1a39000 r--s 00000000 00:23 7952                       /usr/lib64/gconv/gconv-modules.cache
+    7fb8c1a39000-7fb8c1a3a000 rw-p 00000000 00:00 0 
+    7fb8c1a3a000-7fb8c1a3b000 r--p 00021000 00:23 7625                       /usr/lib64/ld-2.17.so
+    7fb8c1a3b000-7fb8c1a3c000 rw-p 00022000 00:23 7625                       /usr/lib64/ld-2.17.so
+    7fb8c1a3c000-7fb8c1a3d000 rw-p 00000000 00:00 0 
+    7ffdc1984000-7ffdc19a5000 rw-p 00000000 00:00 0                          [stack]
+    7ffdc19bb000-7ffdc19bd000 r-xp 00000000 00:00 0                          [vdso]
+    ffffffffff600000-ffffffffff601000 r-xp 00000000 00:00 0                  [vsyscall]
+    
+
+
+
+
+
+
+
+# glances命令
+
+
+
+
+glances命令是一款类似于top和htop的TUI（Text User Interface）工具，用于监控系统状态，比如CPU, 平均负载,内存,网络,磁盘,文件系统,进程等等。该工具在CentOS上没有被提供，需要有一个fedora epel仓库。
+
+
+
+
+对于这个命令，值得一提的是它支持C/S模式，也就是所谓的客户端/服务器端，glances命令可以在一台主机的某个指定ip的指定端口上启动监听服务，然后可以通过另一台主机上的glances命令，连接至远程的glances服务器端，实现远程监控系统状态。
+
+
+
+
+由于之前已经讲过top和htop工具的使用，而glances的用法也很类似，可以使用h查看命令帮助，这里就不再讲述其用法，而是讲述如何实现C/S模式监控系统。
+
+
+
+
+### 直接键入glances命令即可看到glances的工作界面。
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/06/glances.jpg)
+
+
+
+
+## 通过C/S方式使用glances
+
+
+
+
+### 服务器端
+
+
+
+    
+    [root@edu ~]# glances -s -p 10086 -B 10.60.72.190  # -s表示glances命令启动为一个服务，-p指定监听的端口，-B指定监听的ip地址
+    Glances server is running on 10.60.72.190:10086
+    
+
+
+
+
+ 
+
+
+
+
+### 客户端
+
+
+
+    
+    [root@edu ~]# glances -c 10.60.72.190 -p 10086    #-c指定连接的ip地址，-p指定连接的端口
+
+
+
+
+
+
+
+# dstat命令
+
+
+
+
+dstat命令是一个多功用的工具，可以生成各种各样的系统资源统计信息。
+
+
+
+
+正如介绍的，dstat是一款多功能的工具，用于替代以前的vmstat,iostat和ifstat命令。dstat命令可以查看任何的系统资源，并且清晰地给出资源的详细信息，输出的数量和单位。此外，dstat还允许将其输出的数据直接写到csv文件中供excel等程序创建图表。
+
+
+
+
+dstat命令有非常多的选项，有些选项是dstat命令本身提供的，都是一些基础选项，还有一些是通过插件的方式提供的选项，是一些强大的拓展选项。
+
+
+
+
+
+
+
+## 常用基础选项
+
+
+
+
+**-c, --cpu** : 启用cpu统计数据（包括内核空间进程、用户空间进程、空闲、等待队列、硬中断、软中断所占用的cpu时间百分比）
+
+
+
+
+**-C 0,3,total** : 在使用了-c选项后，可以使用-C选项指定统计哪颗cpu，0代表第一颗，1代表第二颗，total代表所有cpu做聚合统计。注意，total只会显示所有cpu的聚合统计信息，而不会显示每一颗cpu的统计信息。多个参数可以用逗号分隔。
+
+
+
+
+**-d, --disk** : 启用磁盘统计数据。（磁盘的IO情况）
+
+
+
+
+**-D total,hda** : 在使用-d选项时，可以通过-D选项指定统计哪一块硬盘，比如sda、sdb，total表示所有硬盘聚合统计。
+
+
+
+
+**-g, --page** : 启用分页统计信息。（page in ，page out）
+
+
+
+
+**-l, --load** : 启用平均负载统计信息。（1分钟，5分钟，15分钟）
+
+
+
+
+**-m, --mem** : 启用内存统计信息。（已用内存，缓冲内存，缓存内存，空闲内存）
+
+
+
+
+**-n, --net** : 启用网络统计信息。（接收数据包，发送数据包）
+
+
+
+
+**-N eth1,total** : 在使用-n选项时，可以通过-N选项指定统计哪块网卡，比如eth0、eth1等，total代表所有的网卡做聚合统计。
+
+
+
+
+**-p, --proc** : 启用进程统计信息。（runnable, uninterruptible, new）
+
+
+
+
+**-r, --io** : 启用I/O请求统计信息。（读请求，写请求）
+
+
+
+
+**-s, --swap** : 启用交换分区统计信息。（已用空间，可用空间）
+
+
+
+
+**--fs, --filesystem** : 启用文件系统统计信息。（打开的文件，inode数量
+
+
+
+
+**--ipc** : 启用IPC统计信息。（消息队列，信号量，共享内存）
+
+
+
+
+**--socket** : 启用套接字统计信息。（total, tcp, udp, raw, ip-fragments）
+
+
+
+
+**--tcp** : 启用tcp套接字统计信息。（listen, established, syn, time_wait, close）
+
+
+
+
+**--udp** : 启用udp套接字统计信息。（listen, active）
+
+
+
+
+**--unix** : 启用unix套接字统计信息。（datagram, stream, listen, active）
+
+
+
+
+**-a, --all** : 等价于-cdngy ,如果不指定选项，则默认为-a
+
+
+
+
+**-f, --full** : 类似于-a，但是-f选项除了-cdngy 外，还会自动探测cpu、硬盘、网卡信息，并使用-C、-D、-N选项显示每一个被探测到的设备。
+
+
+
+
+## 常用拓展选项
+
+
+
+
+**--top-cpu** : 显示最消耗cpu的进程。
+
+
+
+
+**--top-io** : 显示I/O消耗最大的进程。
+
+
+
+
+** --top-latency** : 显示延迟最高的进程。
+
+
+
+
+**--top-mem** : 显示内存占用量最高的进程。
+
+
+
+
+ 
+
+
+
+
+这些选项就不做多的演示，只要自行练习使用即可。
+
+
+
+
+
+
+
+# kill命令
+
+
+
+
+kill命令能够向指定的进程发送特定的信号，以实现对进程的各种控制操作。
+
+
+
+
+kill命令的用法很简单: **kill [options] pid...**
+
+
+
+
+pid为需要指定的进程号。
+
+
+
+
+## 常用选项
+
+
+
+
+**-s, --signal signal** : 指定需要发送的信号，如果不指定则默认为SIGTERM(15)。可以使用三种方式指定。第一种是数字方式，比如SIGKILL信号对应的号码为9，第二种是信号全名，比如SIGKILL，第三种是信号简写，比如KILL。同时，-s signal也可以简写为-SIGNAL，SIGNAL可以为以上三种写法的任意一种。需要查看有哪些信号量及其对应的号码可以通过kill -l。
+
+
+
+
+**-l, --list** : 打印信号名列表。
+
+
+
+
+## 常用信号
+
+
+
+
+**SIGHUP(1)** : 系统对SIGHUP信号的默认处理是终止收到该信号的进程。所以若程序中没有捕捉该信号，当收到该信号时，进程就会退出。
+
+
+
+
+**SIGINT(2)** : SIGINT信号可以中断进程的运行，当用户向前台进程发送ctrl+c指令时就会向进程发送SIGINT信号，该信号可以被捕获，通常该信号的默认行为是终止进程的运行。
+
+
+
+
+**SIGKILL(9)** : SIGKILL信号可以杀死进程，该信号会立即杀死进程，不允许进程在被杀死前清理空间。该信号不能被捕获。
+
+
+
+
+**SIGTERM(15)** : SIGTERM信号可以终止进程，但是允许进程在被终止前清理空间。该信号可以被捕获。
+
+
+
+
+**SIGCONT(18)** : SIGCONT信号可以让被停止的进程继续运行。
+
+
+
+
+**SIGSTOP(19)** : SIGSTOP信号可以让进程停止允许。该信号无法被捕获。
+
+
+
+
+
+
+    
+    [root@edu ~]# systemctl start httpd  #启动一个httpd服务进程
+    [root@edu ~]# pgrep -a httpd  # 查看httpd进程的pid，发现有6个httpd进程，其中第一个为主进程，其他的为子进程。
+    1462 /usr/sbin/httpd -DFOREGROUND
+    1463 /usr/sbin/httpd -DFOREGROUND
+    1464 /usr/sbin/httpd -DFOREGROUND
+    1465 /usr/sbin/httpd -DFOREGROUND
+    1466 /usr/sbin/httpd -DFOREGROUND
+    1467 /usr/sbin/httpd -DFOREGROUND
+    [root@edu ~]# kill -15 1463   #试图向1463进程发送15号信号
+    [root@edu ~]# pgrep -a httpd  #查看后发现1463进程已经结束了，之所以子进程仍然为5个是因为httpd主进程会维持子进程数为5个
+    1462 /usr/sbin/httpd -DFOREGROUND
+    1464 /usr/sbin/httpd -DFOREGROUND
+    1465 /usr/sbin/httpd -DFOREGROUND
+    1466 /usr/sbin/httpd -DFOREGROUND
+    1467 /usr/sbin/httpd -DFOREGROUND
+    1470 /usr/sbin/httpd -DFOREGROUND
+    [root@edu ~]# kill -SIGTERM 1464   #试图向1464进程发送SIGTERM信号
+    [root@edu ~]# pgrep -a httpd       #发现1464进程被结束了，这里httpd主进程还来不及启动一个新的子进程
+    1462 /usr/sbin/httpd -DFOREGROUND
+    1465 /usr/sbin/httpd -DFOREGROUND
+    1466 /usr/sbin/httpd -DFOREGROUND
+    1467 /usr/sbin/httpd -DFOREGROUND
+    1470 /usr/sbin/httpd -DFOREGROUND
+    [root@edu ~]# kill -TERM 1465      #试图向1465进程发送SIGTERM信号
+    [root@edu ~]# pgrep -a httpd       #发现1465进程被结束了
+    1462 /usr/sbin/httpd -DFOREGROUND
+    1466 /usr/sbin/httpd -DFOREGROUND
+    1467 /usr/sbin/httpd -DFOREGROUND
+    1470 /usr/sbin/httpd -DFOREGROUND
+    1473 /usr/sbin/httpd -DFOREGROUND
+    1474 /usr/sbin/httpd -DFOREGROUND
+
+
+
+
+
+
+
+需要注意的是，默认情况下bash会内建kill命令，也就是说，你执行的kill命令一般都是bash自带的，而不是/usr/bin/kill。而且bash的kill与/usr/bin/kill是有些区别的，特别是用在作业管理方面。
+
+
+
+
+# killall命令
+
+
+
+
+从上面的范例中，我们发现对于一些会启动很多进程的服务，如果该服务出了问题，而我们想关停这个服务时，我们需要一个一个地终止这些进程，这就显得很麻烦。
+
+
+
+
+killall命令可以通过命令名向进程发送信号，所有以指定名字为进程名的进程都会被发送信号。
+
+
+
+
+**killall命令的用法和kill差不多，只不过参数从pid变成了pname，也就是进程名。**
+
+
+
+
+## 常用选项
+
+
+
+
+**-s, --signal** : 指定需要发送的信号，如果不指定则默认为SIGTERM(15)。可以使用三种方式指定。第一种是数字方式，比如SIGKILL信号对应的号码为9，第二种是信号全名，比如SIGKILL，第三种是信号简写，比如KILL。同时，-s signal也可以简写为-SIGNAL，SIGNAL可以为以上三种写法的任意一种。需要查看有哪些信号量及其对应的号码可以通过kill -l。
+
+
+
+
+**-I, --ignore-case** : 进程名匹配时忽略大小写。
+
+
+
+
+**-r, --regexp** : 使用拓展正则表达式匹配进程名。
+
+
+
+
+**-u, --user** : 所有以指定用户名为进程属主的进程。
+
+
+
+
+ 
+
+
+
+    
+    [root@edu ~]# pgrep -a httpd
+    1462 /usr/sbin/httpd -DFOREGROUND
+    1466 /usr/sbin/httpd -DFOREGROUND
+    1467 /usr/sbin/httpd -DFOREGROUND
+    1470 /usr/sbin/httpd -DFOREGROUND
+    1473 /usr/sbin/httpd -DFOREGROUND
+    1474 /usr/sbin/httpd -DFOREGROUND
+    [root@edu ~]# killall httpd
+    [root@edu ~]# pgrep -a httpd
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

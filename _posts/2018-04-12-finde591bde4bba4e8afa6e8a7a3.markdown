@@ -1,0 +1,1182 @@
+---
+author: edmund
+comments: true
+date: 2018-04-12 08:51:33+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/04/12/find%e5%91%bd%e4%bb%a4%e8%af%a6%e8%a7%a3/
+slug: find%e5%91%bd%e4%bb%a4%e8%af%a6%e8%a7%a3
+title: find命令详解
+wordpress_id: 179
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- linux
+- 命令
+---
+
+在你努力折腾你的windows或者linux系统后，在你的文件在系统中摆的乱七八糟后，在你把接收到的文件随便丢到一个随手创建的路径后，你总是会在做某件事情的时候发现，你需要用到某个文件，但是这个文件你已经不记得在哪里了。又或者是你接触到一台新的计算机，或者是新的系统，你明确知道你需要什么，但是你不知道这个东西在哪里。你总是会需要在你的文件系统中寻找某些文件，但是面对数以万计的文件，靠手动的暴力查找实在是太痛苦了，而暴力查找又是计算机爱干的事情，所以就会有find命令的出现。
+
+
+
+
+
+
+
+一、文件查找命令
+
+
+
+
+在linux中有两个常用的文件查找命令，find和locate。虽然都是文件查找命令，工作特性却大相径庭。
+
+
+
+
+_locate命令属于非实时数据库查找，在调用locate命令之前，必须预先建立好这个文件系统的索引，然后locate会通过这个索引来查找文件。显然，由于索引的建立需要扫描整个文件系统，所以在这段时间内，系统的资源会被极大占用。当然，虽然索引建立费时间，费资源，但是locate命令根据索引的查找速度极快。locate命令的查找是模糊查找，只要关键字出现在路径中或者文件名中就算匹配，而且由于locate需要预先建立索引的特性，这个命令无法做到实时查找文件。_
+
+
+
+
+<del>这个命令的用法很简单，locate KEYWORD。这里就不再展开讲。</del>
+
+
+
+
+_find命令属于实时查找，会去你给定的路径下扒拉每一个文件，缺点显而易见，就是执行速度会慢，这个慢是相较于locate命令而言的。但是优点也是很明显的，首先就是实时查找，其次是精确匹配，这是因为find命令提供了众多的参数。_
+
+
+
+
+
+
+
+二、find命令的使用
+
+
+
+
+**NAME**
+
+
+
+
+find - search for files in a directory hierarchy
+
+
+
+
+**SYNOPSIS**
+
+
+
+
+find [-H] [-L] [-P] [-D debugopts] [-Olevel] [path...] [expression]
+
+
+
+
+find命令的常用语法：
+
+
+
+
+**find [OPTIONS...] [PATH] [CONDITION] [ACTION]**
+
+
+
+
+**OPTIONS**: find命令的选项
+
+
+
+
+**PATH**: find命令的查找路径，不给则为当前路径
+
+
+
+
+**CONDITION**: find命令的查找条件，能以文件名、文件大小、文件时间戳、文件权限、文件类型等标准进行查找，不给则默认为所有文件
+
+
+
+
+**ACTION**: find命令查找到文件后对进行的操作。默认为将信息打印到屏幕上。
+
+
+
+
+* * *
+
+
+
+
+## 查找条件
+
+
+
+
+### 简单查找
+
+
+
+
+**find**
+
+
+
+
+不加任何参数的find会寻找当前路径下的所有文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find  
+
+.  
+
+./a.txt  
+
+./b.txt  
+
+./c.txt  
+
+./d.txt  
+
+./e.txt  
+
+./f.txt  
+
+./1.txt  
+
+./23.txt  
+
+./root.txt  
+
+./edmund.txt
+> 
+> 
+</blockquote>
+
+
+
+
+**find PATH**
+
+
+
+
+只加路径的find会查找指定路径下的所有文件
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test  
+
+/tmp/test  
+
+/tmp/test/a.txt  
+
+/tmp/test/b.txt  
+
+/tmp/test/c.txt  
+
+/tmp/test/d.txt  
+
+/tmp/test/e.txt  
+
+/tmp/test/f.txt  
+
+/tmp/test/1.txt  
+
+/tmp/test/23.txt  
+
+/tmp/test/root.txt  
+
+/tmp/test/edmund.txt
+> 
+> 
+</blockquote>
+
+
+
+
+ 
+
+
+
+
+### 按文件名查找
+
+
+
+
+**-name FILENAME**: 指定的文件名，可以包含通配符（*，？，[]，[^]）,如果不使用通配符则表示精确匹配。
+
+
+
+
+**-iname FILENAME**: 和-name类似，但是会忽略字符的大小写。
+
+
+
+
+**-regex PATTERN**:  正则表达式的模式，此时不仅会匹配文件名，还会包含路径名。
+
+
+
+
+* * *
+
+
+
+
+查找文件名为a的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test -name a
+> 
+> 
+</blockquote>
+
+
+
+
+查找文件名为a.txt的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test -name a.txt  
+
+/tmp/test/a.txt
+> 
+> 
+</blockquote>
+
+
+
+
+查找文件名为"a*"的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test -name "a*"  
+
+/tmp/test/a.txt
+> 
+> 
+</blockquote>
+
+
+
+
+查找文件名为"a*"的文件，忽略大小写。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# touch A.txt  
+
+[root@node1 test]# find /tmp/test -iname "a*"  
+
+/tmp/test/a.txt  
+
+/tmp/test/A.txt
+> 
+> 
+</blockquote>
+
+
+
+
+查找文件名为字母的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test -regex ".*[a-z]\.txt"  
+
+/tmp/test/a.txt  
+
+/tmp/test/b.txt  
+
+/tmp/test/c.txt  
+
+/tmp/test/d.txt  
+
+/tmp/test/e.txt  
+
+/tmp/test/f.txt  
+
+/tmp/test/root.txt  
+
+/tmp/test/edmund.txt
+> 
+> 
+</blockquote>
+
+
+
+
+ 
+
+
+
+
+### 按属主（user）属组（group）查找
+
+
+
+
+**-user USERNAME**: 查找属主为USERNAME的文件
+
+
+
+
+**-group GROUPNAME**: 查找属主为GROUPNAME的文件
+
+
+
+
+**-uid UID**: 查找user id为UID的文件
+
+
+
+
+**-gid GID**:查找group id为GID的文件
+
+
+
+
+**-nouser**: 查找没有属主（属主无法在/etc/passwd中找到，所以只显示UID的文件）的文件
+
+
+
+
+**-nogroup**: 查找没有属组（属主无法在/etc/group中找到，所以只显示GID的文件）的文件
+
+
+
+
+* * *
+
+
+
+
+查找属主为edmund的文件
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test -user edmund  
+
+/tmp/test/a.txt
+> 
+> 
+</blockquote>
+
+
+
+
+查找没有属主（user）的文件
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test/ -nouser -ls  
+
+985456 0 -rw-r--r-- 1 1009 1011 0 Apr 12 03:02 /tmp/test/d.txt  
+
+985458 0 -rw-r--r-- 1 1007 root 0 Apr 12 03:02 /tmp/test/e.txt
+> 
+> 
+</blockquote>
+
+
+
+
+查找没有属组（group）的文件
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test/ -nogroup -ls  
+
+985456 0 -rw-r--r-- 1 1009 1011 0 Apr 12 03:02 /tmp/test/d.txt  
+
+985459 0 -rw-r--r-- 1 root 1008 0 Apr 12 03:02 /tmp/test/f.txt
+> 
+> 
+</blockquote>
+
+
+
+
+**注：-ls为ACTION中的一种，后面会讲到，表示显示查找到的文件的详细信息。**
+
+
+
+
+ 
+
+
+
+
+### 按文件类型查找
+
+
+
+
+**-type TYPE**: 按照指定的文件类型进行查找
+
+
+
+
+**b 块设备文件**
+
+
+
+
+**c 字符设备文件**
+
+
+
+
+**d 目录文件**
+
+
+
+
+**p 命名管道文件**
+
+
+
+
+**f 普通文件**
+
+
+
+
+**l 链接文件**
+
+
+
+
+**s 套接字文件**
+
+
+
+
+* * *
+
+
+
+
+查找块设备文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# mknod block b 250 0  
+
+[root@node1 test]# find /tmp/test -type b  
+
+/tmp/test/block  
+
+[root@node1 test]# find /tmp/test -type b -ls  
+
+733817 0 brw-r--r-- 1 root root 250, 0 Apr 12 03:41 /tmp/test/block
+> 
+> 
+</blockquote>
+
+
+
+
+ 
+
+
+
+
+### 组合查找条件
+
+
+
+
+**-a**: 查找条件进行与操作
+
+
+
+
+**-o**: 查找条件进行或操作
+
+
+
+
+**-not， ！**: 查找条件进行非操作
+
+
+
+
+* * *
+
+
+
+
+查找属主不是root，且文件类型为普通文件的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test -not -user root -a -type f -ls  
+
+985450 0 -rw-r--r-- 1 edmund edmund 0 Apr 12 03:02 /tmp/test/a.txt  
+
+985451 0 -rw-r--r-- 1 linux root 0 Apr 12 03:02 /tmp/test/b.txt  
+
+985456 0 -rw-r--r-- 1 1009 1011 0 Apr 12 03:02 /tmp/test/d.txt  
+
+985458 0 -rw-r--r-- 1 1007 root 0 Apr 12 03:02 /tmp/test/e.txt
+> 
+> 
+</blockquote>
+
+
+
+
+查找属主为没有属主，或没有属组的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test \( -nouser -o -nogroup \) -ls  
+
+985456 0 -rw-r--r-- 1 1009 1011 0 Apr 12 03:02 /tmp/test/d.txt  
+
+985458 0 -rw-r--r-- 1 1007 root 0 Apr 12 03:02 /tmp/test/e.txt  
+
+985459 0 -rw-r--r-- 1 root 1008 0 Apr 12 03:02 /tmp/test/f.txt
+> 
+> 
+</blockquote>
+
+
+
+
+**注：\( \)表示小括号，可以让-ls打印出小括号中找到的所有文件，而不是只打印一部分。使用反斜线"\"是因为bash中的()有特殊意义，所以在正常使用时需要转义。**
+
+
+
+
+ 
+
+
+
+
+### 按文件大小查找
+
+
+
+
+**-size [+|-]n[cwbkMG]**
+
+
+
+
+**`b' 文件占有的512字节的数据块个数**
+
+
+
+
+**`c' 文件的字节数**
+
+
+
+
+**`w' 文件的双字节数，即字数**
+
+
+
+
+**`k' 文件大小，以KB作为单位**
+
+
+
+
+**`M' 文件大小，以MB作为单位**
+
+
+
+
+**`G' 文件大小，以GB作为单位**
+
+
+
+
+**n: 查找文件大小位于(n-1,n]之间的文件**
+
+
+
+
+**+n: 查找文件大小位于(n,+∞)之间的文件**
+
+
+
+
+**-n: 查找文件大小位于[0,n-1)之间的文件**
+
+
+
+
+* * *
+
+
+
+
+查找/var目录下(2k-3k]之间的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /var -size 3k -exec ls -lh {} \;  
+
+-rw-r--r--. 1 root root 2.7K Apr 12 03:15 /var/lib/yum/rpmdb-indexes/conflicts  
+
+-rw-r--r--. 1 root root 2.7K Mar 19 12:26 /var/lib/alternatives/java  
+
+-rw-rw----. 1 mysql mysql 3.0K Mar 21 08:49 /var/lib/mysql/mysql/help_category.MYI  
+
+-rw-------. 1 root root 2.3K Mar 19 11:33 /var/log/anaconda/ifcfg.log
+> 
+> 
+</blockquote>
+
+
+
+
+**注意：-exec ls -lh {} \;为ACTION，表示执行外部命令ls -lh, 后面会详细讲。**
+
+
+
+
+查找/var目录下[0-2k)之间的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /var -size -3k | wc -l  
+
+6712
+> 
+> 
+</blockquote>
+
+
+
+
+注意：由于文件数量过多，所以只输出文件数量。
+
+
+
+
+查找/var目录下大于3k的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /var -size +3k | wc -l  
+
+222
+> 
+> 
+</blockquote>
+
+
+
+
+ 
+
+
+
+
+### 按文件时间戳查找
+
+
+
+
+**以天为单位: **
+
+
+
+
+**-atime [+/-] ATIME**
+
+
+
+
+**ATIME**: 查找 (当前时间-文件访问时间) 的天数位于[ATIME,ATIME+1)的文件
+
+
+
+
+**+ATIME**: 查找 (当前时间-文件访问时间) 的天数位于[ATIME+1,+∞)的文件
+
+
+
+
+**-ATIME**: 查找 (当前时间-文件访问时间) 的天数位于[0,ATIME)的文件
+
+
+
+
+**-mtime**: 类似于ATIME，只是将文件访问时间改为文件修改时间
+
+
+
+
+**-ctime**: 类似于ATIME，只是将文件访问时间改为文件改变时间
+
+
+
+
+**以分钟为单位(类似于以天为单位，只是将单位改为分钟数):**
+
+
+
+
+**-amin**：同上
+
+
+
+
+**-mmin**：同上
+
+
+
+
+**-cmin**：同上
+
+
+
+
+* * *
+
+
+
+
+查找三天内访问过的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test -atime -3  
+
+/tmp/test  
+
+/tmp/test/a.txt  
+
+/tmp/test/b.txt  
+
+/tmp/test/c.txt  
+
+/tmp/test/d.txt  
+
+/tmp/test/1.txt  
+
+/tmp/test/23.txt  
+
+/tmp/test/root.txt  
+
+/tmp/test/edmund.txt
+> 
+> 
+</blockquote>
+
+
+
+
+查找三天前被访问过的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test -atime 3  
+
+/tmp/test/f.txt
+> 
+> 
+</blockquote>
+
+
+
+
+查找超过四天（包含四天）未被访问过的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test -atime +3  
+
+/tmp/test/e.txt
+> 
+> 
+</blockquote>
+
+
+
+
+ 
+
+
+
+
+### 按文件权限查找
+
+
+
+
+**-perm mode**: 查找三组权限中每一位权限都精确匹配的文件
+
+
+
+
+**-perm -mode**: 查找三组权限中都包含有mode权限的文件
+
+
+
+
+**-perm /mode**: 查找三组权限中只要任意一组包含有mode权限的文件
+
+
+
+
+* * *
+
+
+
+
+查找文件权限为r--r--r--的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test -perm 444 -ls  
+
+985450 0 -r--r--r-- 1 edmund edmund 0 Apr 12 03:02 /tmp/test/a.txt  
+
+985451 0 -r--r--r-- 1 linux root 0 Apr 12 03:02 /tmp/test/b.txt
+> 
+> 
+</blockquote>
+
+
+
+
+查找每组权限都包含x（可执行）权限的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test/* -perm -111 -ls  
+
+1012299 0 -rwxr-xr-x 1 root root 0 Apr 12 03:21 /tmp/test/root.txt
+> 
+> 
+</blockquote>
+
+
+
+
+查找任意一组权限中包含有w（写）权限的文件。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test/* -perm /222 -ls  
+
+985460 0 -rw-r--r-- 1 root root 0 Apr 12 03:20 /tmp/test/1.txt  
+
+733804 0 -rw-r--r-- 1 root root 0 Apr 12 03:21 /tmp/test/23.txt  
+
+985452 0 -rw-r--r-- 1 root gentoo 0 Apr 12 03:02 /tmp/test/c.txt  
+
+985456 0 -rw-r--r-- 1 1009 1011 0 Apr 12 03:02 /tmp/test/d.txt  
+
+733812 0 -rw-r--r-- 1 root root 0 Apr 12 03:21 /tmp/test/edmund.txt  
+
+985458 0 -rw-r--r-- 1 1007 root 0 Apr 12 03:02 /tmp/test/e.txt  
+
+985459 0 -rw-r--r-- 1 root 1008 0 Apr 12 03:02 /tmp/test/f.txt  
+
+1012299 0 -rwxr-xr-x 1 root root 0 Apr 12 03:21 /tmp/test/root.tx
+> 
+> 
+</blockquote>
+
+
+
+
+ 
+
+
+
+
+## 查找动作ACTION
+
+
+
+
+**-print**: 默认动作，查找到文件后向屏幕打印其简略信息。
+
+
+
+
+**-ls**：以ls -l的形式向屏幕输出文件的详细信息。
+
+
+
+
+**-delete**：删除查找到的文件（危险动作）。
+
+
+
+
+**-fls PATH** ：将查找到的文件以ls -l的形式输出至PATH指定的文件中。
+
+
+
+
+**-ok COMMAND {} \;** 对查找到的每个文件都执行COMMAND命令，但是每次执行命令之前都会要求用户确认。（{} \; 为固定格式）
+
+
+
+
+**-exec COMMAND {} \; ** 对查找到的每个文件都执行COMMAND命令。（{} \; 为固定格式）
+
+
+
+
+**注意：一般来说，某些命令后面接的参数数量是有限制的，由于{}表示所有参数，所以有时候会出现命令由于参数过多无法执行的情况，此时可以使用xargs命令解决。**
+
+
+
+
+通过**find [OPTIONS] [CONDITIONS] | xargs -n NUM COMMAND** 来执行。
+
+
+
+
+这里用到了管道将find到的文件传给xargs命令，然后用-n NUM限制每次传递NUM个参数，然后后面接的COMMAND表示要执行的命令，该命令会以xargs接收到的参数作为参数。
+
+
+
+
+例如：
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test/* -perm /222 | xargs -n 5 ls -lh  
+
+-rw-r--r--. 1 root root 0 Apr 12 03:20 /tmp/test/1.txt  
+
+-rw-r--r--. 1 root root 0 Apr 12 03:21 /tmp/test/23.txt  
+
+-rw-r--r--. 1 root gentoo 0 Apr 12 03:02 /tmp/test/c.txt  
+
+-rw-r--r--. 1 1009 1011 0 Apr 12 03:02 /tmp/test/d.txt  
+
+-rw-r--r--. 1 root root 0 Apr 12 03:21 /tmp/test/edmund.txt  
+
+-rw-r--r--. 1 1007 root 0 Apr 12 03:02 /tmp/test/e.txt  
+
+-rw-r--r--. 1 root 1008 0 Apr 12 03:02 /tmp/test/f.txt  
+
+-rwxr-xr-x. 1 root root 0 Apr 12 03:21 /tmp/test/root.txt
+> 
+> 
+</blockquote>
+
+
+
+
+看起来没有区别，但是可以通过-p选项看清楚命令执行的详细过程。
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# find /tmp/test/* -perm /222 | xargs -p -n 5 ls -lh  
+
+ls -lh /tmp/test/1.txt /tmp/test/23.txt /tmp/test/c.txt /tmp/test/d.txt /tmp/test/edmund.txt ?...y  
+
+-rw-r--r--. 1 root root 0 Apr 12 03:20 /tmp/test/1.txt  
+
+-rw-r--r--. 1 root root 0 Apr 12 03:21 /tmp/test/23.txt  
+
+-rw-r--r--. 1 root gentoo 0 Apr 12 03:02 /tmp/test/c.txt  
+
+-rw-r--r--. 1 1009 1011 0 Apr 12 03:02 /tmp/test/d.txt  
+
+-rw-r--r--. 1 root root 0 Apr 12 03:21 /tmp/test/edmund.txt
+> 
+> 
+
+> 
+> ls -lh /tmp/test/e.txt /tmp/test/f.txt /tmp/test/root.txt ?...y  
+
+-rw-r--r--. 1 1007 root 0 Apr 12 03:02 /tmp/test/e.txt  
+
+-rw-r--r--. 1 root 1008 0 Apr 12 03:02 /tmp/test/f.txt  
+
+-rwxr-xr-x. 1 root root 0 Apr 12 03:21 /tmp/test/root.tx
+> 
+> 
+</blockquote>
+
+
+
+
+可以看出xargs每次只给ls -lh命令传递了5个参数。
+
+
+
+
+ 
+
+
+
+
+## Practice(选中空白处查看解答)：
+
+
+
+
+1、查找/var目录下属主为root，且属组为mail的所有文件或目录；  
+
+# find /var -user root -group mail
+
+
+
+
+2、查找/usr目录下不属于root、bin和hadoop的所有文件或目录；  
+
+# find /usr -not \( -user root -o -user bin -o -user hadoop \)
+
+
+
+
+3、查找/etc目录下最周一周内其内容修改过，同时属主不为root，也不是hadoop的文件或目录；  
+
+# find /etc/ -mtime -7 -a -not \( -user root -o -user hadoop \)
+
+
+
+
+4、查找当前系统上没有属主或属组，且最近一个周内曾被访问过的文件或目录；  
+
+# find / -nouser -o -nogroup -a -atime -7
+
+
+
+
+5、查找/etc目录下大于1M且类型为普通文件的所有文件；  
+
+# find /etc -size +1M -type f
+
+
+
+
+6、查找/etc目录下所有用户都没有写权限的文件；  
+
+# find /etc -not -perm /222
+
+
+
+
+7、查找/etc目录下至少有一类用户没有执行权限的文件；  
+
+# find /etc -not -perm -111
+
+
+
+
+8、查找/etc/init.d目录下，所有用户都有执行权限，且其它用户有写权限的文件；  
+
+# find /etc/init.d -perm -113

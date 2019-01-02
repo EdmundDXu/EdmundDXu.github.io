@@ -1,0 +1,212 @@
+---
+author: edmund
+comments: true
+date: 2018-03-27 12:59:08+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/03/27/cp%e3%80%81mv%e3%80%81rm%e5%91%bd%e4%bb%a4/
+slug: cp%e3%80%81mv%e3%80%81rm%e5%91%bd%e4%bb%a4
+title: cp、mv、rm命令详解
+wordpress_id: 121
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- linux
+- 命令
+---
+
+## cp命令
+
+
+**NAME**
+cp - copy files and directories
+
+**SYNOPSIS**
+cp [OPTION]... [-T] SOURCE DEST
+cp [OPTION]... SOURCE... DIRECTORY
+cp [OPTION]... -t DIRECTORY SOURCE...
+
+cp命令为copy的简写，用于复制文件，用法有以上三种，一般会使用前面两种。
+
+这两种可以统一归结为一种格式,这里就这种格式进行cp操作的分析：
+
+
+### cp操作详细分析
+
+
+cp SRC DEST
+
+SRC为单个文件
+
+
+如果DEST不存在，则cp命令会新建和SRC同名的文件，并且用SRC的内容去填充该文件
+
+
+
+
+如果DEST存在
+
+
+
+
+DEST为文件，那么cp命令默认会直接覆盖原有的文件，将内容填充为SRC的内容，在使用cp -i选项时，将会出现提示信息
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# ls
+DEST SRC
+[root@node1 test]# cp -i SRC DEST 
+cp: overwrite ‘DEST’?  此处输入y表示确定，n表示取消
+> 
+> 
+</blockquote>
+
+
+
+
+DEST为目录，那么cp命令会在该目录下新建和SRC同名的文件，并且用SRC的内容去填充该文件
+
+
+SRC为多个文件
+
+
+只有当DEST存在且为目录时才能进行cp操作，其他情况均会报错
+
+
+SRC为目录(必须指定cp -r选项才能复制目录)
+
+
+如果DEST不存在，则cp命令会新建一个名为DEST的目录，并且将SRC目录下的所有文件和目录复制到DEST目录下
+
+
+
+
+如果DEST存在
+
+
+
+
+DEST为文件，cp命令会报错
+
+
+
+
+DEST为目录，cp命令会将在DEST目录下新建一个和SRC同名的目录，并且将SRC目录下的所有文件和目录复制到DEST目录下
+
+
+
+
+
+### cp命令常用选项
+
+
+-P, --no-dereference
+never follow symbolic links in SOURCE 在复制符号链接时不会复制符号链接指向的文件，而是复制符号链接本身
+
+-R, -r, --recursive
+copy directories recursively 递归地复制目录
+
+-v, --verbose
+explain what is being done 在进行cp操作时打印详细信息，告知调用者命令现在在进行什么操作
+
+--preserve[=ATTR_LIST]
+preserve the specified attributes (default: mode,ownership,timestamps), if pos‐
+sible additional attributes: context, links, xattr, all 保留某些特殊的属性，mode权限，ownership属主属组，timestamps文件时间戳，context安全上下文，links符号链接的属性，xattr文件特殊属性，all以上所有属性。如果不加=，则默认为mode,ownership,timestamps
+
+-d same as --no-dereference --preserve=links 相当于--no-dereference --preserve=links
+
+-a, --archive
+same as -dR --preserve=all 相当于-dR --preserve=all  ,常用于文件的归档操作
+
+i, --interactive
+prompt before overwrite (overrides a previous -n option) 在覆盖文件之前提示用户
+
+-f, --force
+if an existing destination file cannot be opened, remove it and try again (this
+option is ignored when the -n option is also used) 忽略-i选项，并且在目标文件不能打开，就将其删除，然后重新进行cp操作
+
+
+
+
+## mv命令
+
+
+**NAME**
+mv - move (rename) files
+
+**SYNOPSIS**
+mv [OPTION]... [-T] SOURCE DEST
+mv [OPTION]... SOURCE... DIRECTORY
+mv [OPTION]... -t DIRECTORY SOURCE...
+
+mv的用法和cp大致上相同，用于移动文件，分析类似于cp命令，但是需要指出的是，mv在移动目录的时候不需要像cp命令那样加上-r选项
+
+
+### mv命令常用选项
+
+
+-f, --force
+do not prompt before overwriting 在覆盖之前不提示用户，直接覆盖
+
+-i, --interactive
+prompt before overwrite 在覆盖之前提示用户
+
+-v, --verbose
+explain what is being done 在进行mv操作时打印详细信息
+
+
+
+
+## rm命令
+
+
+**NAME**
+rm - remove files or directories
+
+**SYNOPSIS**
+rm [OPTION]... FILE...
+
+rm命令用于删除文件或者目录，需要注意的是，rm命令默认是用来删除文件的，不能删除目录，需要加上-r选项才能删除目录。
+
+
+### rm命令常用选项
+
+
+-f, --force
+ignore nonexistent files and arguments, never prompt 忽略-i选项，在进行删除操作时不提示用户
+
+-i prompt before every removal 在进行每个文件的删除操作时，都会提示用户
+
+
+<blockquote>[root@node1 test]# ls
+DEST SRC test1 test2
+[root@node1 test]# rm -ri *
+rm: remove regular file ‘DEST’? y
+rm: remove regular file ‘SRC’? y
+rm: remove directory ‘test1’? y
+rm: remove directory ‘test2’? y</blockquote>
+
+
+-r, -R, --recursive
+remove directories and their contents recursively 递归删除目录和目录中的所有内容
+
+-v, --verbose
+explain what is being done
+
+注意：在CentOS5及以前，rm -rf /命令是可以执行的，这个命令一旦执行带来的后果将是毁灭性的，所以从CentOS6开始，递归删除根目录的操作默认是禁止的。
+
+
+<blockquote>[root@node1 test]# rm -rf /
+rm: it is dangerous to operate recursively on ‘/’
+rm: use --no-preserve-root to override this failsafe</blockquote>
+
+
+需要额外加上参数确定你这个操作是确实要做的。 --no-preserve-root  do not treat '/' specially
+
+

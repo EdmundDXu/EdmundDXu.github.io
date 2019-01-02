@@ -1,0 +1,94 @@
+---
+author: edmund
+comments: true
+date: 2018-03-28 01:42:48+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/03/28/%e5%91%bd%e4%bb%a4%e5%88%ab%e5%90%8dalias/
+slug: '%e5%91%bd%e4%bb%a4%e5%88%ab%e5%90%8dalias'
+title: 命令别名alias
+wordpress_id: 125
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- 命令
+---
+
+**alias [-p] [name[=value] ... ]**
+Define or display aliases.
+
+alias命令用来定义和显示命令别名，命令别名就是一个命令的另一个名字，比如有一个网络管理的常用命令就是
+
+
+<blockquote>[root@node1 ~]# cd /etc/sysconfig/network-scripts/</blockquote>
+
+
+但是每次如果都要输入这么长的命令，想想都觉得烦，所以可以为这个冗长的命令定义一个简短的别名，使用alias命令就行。
+
+
+<blockquote>[root@node1 ~]# alias cdnet='cd /etc/sysconfig/network-scripts/'</blockquote>
+
+
+然后可以通过alias命令不带任何参数来查看所有的命令别名
+
+
+<blockquote>[root@node1 ~]# alias
+alias cdnet='cd /etc/sysconfig/network-scripts/'
+alias cp='cp -i'
+alias egrep='egrep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias grep='grep --color=auto'
+alias l.='ls -d .* --color=auto'
+alias ll='ls -l --color=auto'
+alias ls='ls --color=auto'
+alias mv='mv -i'
+alias rm='rm -i'
+alias which='alias | /usr/bin/which --tty-only --read-alias --show-dot --show-tilde'</blockquote>
+
+
+可以看到cdnet已经添加到别名中了，并且可以当做一个命令来使用，bash也会提供命令别名的补全功能，非常方便。
+
+但是使用alias命令直接添加的别名只会在当前bash进程中有效，在其他bash进程中不会生效，而且在下次登录到bash中时，alias命令定义的别名就会消失。如果想要永久有效，就需要修改bash进程的配置文件，推荐修改用户家目录下的.bashrc文件。
+
+
+<blockquote>[root@node1 ~]# vim .bashrc 
+
+# .bashrc
+
+# User specific aliases and functions
+
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+alias cdnet='cd /etc/sysconfig/network-scripts/'
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+. /etc/bashrc
+fi</blockquote>
+
+
+保存退出后，命令别名不会立即生效，而只对新的bash进程有效，如果想要立即生效，可以通过alias命令手动定义，也可以使用source命令读取配置文件。
+
+
+<blockquote>[root@node1 ~]# source .bashrc</blockquote>
+
+
+此时，命令别名将会永久有效。
+
+撤销别名也很容易，使用unalias命令跟上需要撤销的别名就好了。
+
+
+<blockquote>[root@node1 ~]# unalias cdnet</blockquote>
+
+
+
+
+注意到，.bashrc配置文件已经默认为管理员定义了几个命令别名，很多的别名都与命令名相同，如rm='rm -i' ，关于cp、mv、rm命令及其选项的作用可以参考我之前的文章（[cp、mv、rm命令详解](http://118.25.17.78/topics/121)），简单地说，该命令可以尽量避免管理员由于权限过大的问题导致的误操作，但是别名都与命令名相同又会导致一个问题，如果我只想执行命令本身而不想要执行别名该怎么办，这个时候只需要在命令名之前加上\就可以只执行原本的命令而不是命令别名。
+
+
+<blockquote>[root@node1 ~]# \cp SRC DEST</blockquote>
+
+
+

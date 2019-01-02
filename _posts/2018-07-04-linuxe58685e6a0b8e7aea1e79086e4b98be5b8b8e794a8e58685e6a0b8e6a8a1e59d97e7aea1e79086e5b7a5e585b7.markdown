@@ -1,0 +1,426 @@
+---
+author: edmund
+comments: true
+date: 2018-07-04 07:05:13+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/07/04/linux%e5%86%85%e6%a0%b8%e7%ae%a1%e7%90%86%e4%b9%8b%e5%b8%b8%e7%94%a8%e5%86%85%e6%a0%b8%e6%a8%a1%e5%9d%97%e7%ae%a1%e7%90%86%e5%b7%a5%e5%85%b7/
+slug: linux%e5%86%85%e6%a0%b8%e7%ae%a1%e7%90%86%e4%b9%8b%e5%b8%b8%e7%94%a8%e5%86%85%e6%a0%b8%e6%a8%a1%e5%9d%97%e7%ae%a1%e7%90%86%e5%b7%a5%e5%85%b7
+title: Linux内核管理之常用内核模块管理工具
+wordpress_id: 528
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- depmod
+- insmod
+- linux
+- lsmod
+- modinfo
+- modprobe
+- rmmod
+- uname
+- 内核管理
+- 命令
+---
+
+# 前言
+
+
+
+
+我们知道Linux内核是单内核设计，将所有内核功能集成在单个内核中，虽然是单内核设计，但是Linux也充分借鉴了微内核设计的特性，使用模块化设计实现了内核功能的动态加载和卸载，使得Linux内核变成了一个核心（kernel）+多个内核模块（kernel object）的结构。
+
+
+
+
+所以对Linux内核的管理实际上就可以分为对Linux kernel的管理和对Linux kernel object的管理。通过对kernel object的管理，系统管理员可以清楚地知道当前系统装载了哪些内核模块，考虑到当前系统的性能，哪些模块是可以被卸载的，而当某个内核模块被需要时，可以将其加载进内核内存中直接使用。
+
+
+
+
+下面会围绕常用的内核模块管理工具做介绍，使用的是CentOS 7系统。
+
+
+
+
+
+
+
+# lsmod命令
+
+
+
+
+lsmod命令可以显示当前系统上有哪些内核模块已经被加载，同时还会显示模块间的依赖关系。实际上，lsmod命令只是对/proc/modules中的内容做了更加人性化的显示输出，该文件会在下一章节讲解（Linux内核管理之伪文件系统procfs和sysfs）。
+
+
+
+
+lsmod命令没有任何选项和参数，直接使用即可，通常可以与grep等文本处理命令配合使用。
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/07/lsmod.jpg)
+
+
+
+
+我们可以看到lsmod命令有四列输出，第一列表示模块名称，第二列表示模块大小，第三列表示模块被依赖的次数，或者说模块被其他模块使用的次数，第四列表示需要依赖此模块的模块列表。
+
+
+
+
+通过lsmod命令的输出，我们可以很清晰的看到当前系统上加载的模块和模块之间的依赖关系。
+
+
+
+
+可以通过grep等文本处理命令过滤出想要查看的模块。
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/07/lsmod_grep.jpg)
+
+
+
+
+
+
+
+# uname命令
+
+
+
+
+uname命令可以打印当前系统的硬件和操作系统信息，之所以讲这个命令是因为后面的内核管理相关操作经常会用到这些信息。
+
+
+
+
+## **命令用法**
+
+
+
+
+**uname [OPTION]...**
+
+
+
+
+
+
+
+## **常用选项**
+
+
+
+
+**-i, --hardware-platform** 打印当前硬件平台（[hardware platform](https://www.techopedia.com/definition/7529/hardware-platform), 有时候称作硬件实现）, 某些情况下将操作系统归类于硬件平台。如果无法获取硬件平台，则打印'unknown'。
+
+
+
+
+**-m, --machine** 打印当前的CPU体系结构，或者是主板体系结构（[machine hardware name](https://unix.stackexchange.com/questions/95992/whats-the-difference-between-machine-hardware-name-and-processor-type)）。
+
+
+
+
+**-p, --processor** 打印当前的处理器类型（有时候称作指令集体系结构，Instruction Set Architecture）。如果无法获取ISA, 则打印'unknown'。
+
+
+
+
+**-n, --nodename** 打印当前节点的主机名（和hostname的输出基本一致）
+
+
+
+
+**-o, --operating-system** 打印操作系统名称。
+
+
+
+
+**-r, --kernel-release** 打印内核发行版本。
+
+
+
+
+**-s, --kernel-name** 打印内核名称。有些操作系统的名称和内核名称相同（比如FreeBSD, HP-UX），而有些则不同（比如GNU/Linux, Solaris）。
+
+
+
+
+**-v, --kernel-version**  打印内核版本。（-r与-v区别请见[What's the difference between “uname -r” and “uname -v”?](https://superuser.com/questions/442564/whats-the-difference-between-uname-r-and-uname-v)）
+
+
+
+
+**-a, --all** 打印上述提到的所有信息。如果processor type和hardware platform为'unknown'，则略过这两项。
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/07/uname.jpg)
+
+
+
+
+
+
+
+# modinfo命令
+
+
+
+
+modinfo命令可以查看给定模块的详细信息，默认以 fieldname : value 的格式输出信息，每行一条信息。可以通过模块名或者模块路径的方式指定模块，如果给的是模块名的话，modinfo会去/lib/modules/VERSION目录下寻找同名文件。
+
+
+
+
+其中VERSION为内核发行版本号，可以通过uname -r命令查看当前运行的内核的发行版本号。
+
+
+
+
+## **命令用法**
+
+
+
+
+**modinfo [ OPTIONS ] [ modulename | filename... ]**
+
+
+
+
+其中modulename为模块名，filename为模块路径。
+
+
+
+
+
+
+
+## **常用选项**
+
+
+
+
+**-F, --field** 只打印指定的字段。默认情况下modinfo会打印指定模块的所有信息，可以使用-F选项指定只打印某些字段。比如 : -F filename表示只打印指定模块的文件路径。
+
+
+
+
+**-a --author, -d --description, -l --license, -p --parameters, -n --filename** 这些选项为-F选项的快捷选项，分别代表author（制作者）, description（描述信息）, license（许可证）, parmeter（模块参数）和filename（模块文件路径）。
+
+
+
+
+**-k kernel** 从指定的内核版本查找模块而不是从当前运行的内核版本查找模块。一般用于安装新的内核版本时制作ramdisk。
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/07/modinfo.jpg)
+
+
+
+
+
+
+
+# modprobe命令
+
+
+
+
+modprobe用于装载和卸载内核模块，和modinfo一样，modprobe也会去/lib/modules/VERSION目录下查找并加载指定的内核模块。modprobe的装载和卸载非常智能，它可以通过modules.dep.bin文件（位于/lib/modules/VERSION目录）自动分析指定模块的依赖关系，并且自动解决。在加载一个模块时会首先加载这个模块依赖的所有模块，在卸载一个模块时会首先卸载依赖这个模块的所有模块。
+
+
+
+
+在加载内核模块时可以直接给内核模块传递参数，也可以将参数写在modprobe的配置文件中。modprobe的主配置文件为/etc/modprobe.conf,而每个模块也可以定义自己的配置文件，放在/etc/modprobe.d目录下，以.conf结尾。
+
+
+
+
+## 命令用法
+
+
+
+
+**modprobe [ OPTIONS ] [modulename] [module parameters...]**
+
+
+
+
+其中modulename为模块名，module parameters为模块参数。
+
+
+
+
+
+
+
+## 常用选项
+
+
+
+
+**-a, --all** 一次可指定多个模块进行加载。默认只能指定一个。
+
+
+
+
+**-n, --dry-run, --show** 干跑。这个选项使得modprobe会完成所有操作，除了真正的加载和卸载。和-v一起使用可以很容易地调试出问题所在。
+
+
+
+
+**-q, --quiet** 当你试图加载或者卸载一个无法找到的模块时，modprobe将不会打印任何错误信息。但是仍然有命令执行状态返回值。
+
+
+
+
+**-r, --remove** 让modprobe卸载指定的模块。默认情况下modprobe会加载指定模块。如果指定模块依赖的模块也没有被别人依赖，那么就将指定模块依赖到的模块一并卸载。卸载模块时可以指定多个模块。
+
+
+
+
+**--show-depends** 查看指定模块的依赖关系，在打印依赖到的模块的同时也会打印指定模块自身。
+
+
+
+
+**-v, --verbose** 打印modprobe操作时的详细信息。  
+
+  
+
+
+
+
+
+
+这里尝试加载nfs模块，发现nfs依赖到的模块被一并加载了。
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/07/modprobe.jpg)
+
+
+
+
+然后尝试卸载nfs模块，发现nfs依赖到的未被使用的模块也一并被卸载了。
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/07/modprobe-r.jpg)
+
+
+
+
+ 
+
+
+
+
+# depmod命令
+
+
+
+
+在前面我们提到，modprobe需要依赖最新的modules.dep.bin解决模块之间的依赖关系。而这个文件则正是由depmod命令生成的。
+
+
+
+
+depmod命令不仅可以生成modules.dep文件，还能生成[System.map](https://en.wikipedia.org/wiki/System.map)文件，位于/boot目录下，这个文件包含有模块的符号表。
+
+
+
+
+
+
+
+# insmod命令
+
+
+
+
+insmod命令用于装载指定的模块，需要注意的是，insmod只能接受模块路径作为参数，而无法使用模块名。而且insmod无法解决依赖关系，需要用户手动解决依赖关系。
+
+
+
+
+## 命令用法
+
+
+
+
+**insmod [filename] [module options...]**
+
+
+
+
+其中filename为模块路径，module options为模块参数。
+
+
+
+
+
+
+
+下面尝试使用insmod加载fat模块，可以发现在加载时使用了$()，这个是bash的命令替换语法，可以将$()及其中的命令的替换为命令的输出结果。（即将$(modinfo -n fat) 替换为modinfo -n fat的输出结果，在本机其输出为 /lib/modules/3.10.0-693.el7.x86_64/kernel/fs/fat/fat.ko.xz）
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/07/insmod.jpg)
+
+
+
+
+
+
+
+# rmmod命令
+
+
+
+
+rmmod用于卸载指定的模块，需要注意的是，rmmod接受模块名作为参数，而且rmmod无法解决依赖关系，需要用户手动解决依赖关系。
+
+
+
+
+## 命令用法
+
+
+
+
+**rmmod [modulename]**
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/07/rmmod.jpg)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

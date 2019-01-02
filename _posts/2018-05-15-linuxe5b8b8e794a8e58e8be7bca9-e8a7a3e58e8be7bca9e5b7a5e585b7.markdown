@@ -1,0 +1,836 @@
+---
+author: edmund
+comments: true
+date: 2018-05-15 08:28:43+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/05/15/linux%e5%b8%b8%e7%94%a8%e5%8e%8b%e7%bc%a9-%e8%a7%a3%e5%8e%8b%e7%bc%a9%e5%b7%a5%e5%85%b7/
+slug: linux%e5%b8%b8%e7%94%a8%e5%8e%8b%e7%bc%a9-%e8%a7%a3%e5%8e%8b%e7%bc%a9%e5%b7%a5%e5%85%b7
+title: Linux常用压缩/解压缩工具
+wordpress_id: 315
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- linux
+- 压缩
+- 命令
+- 归档
+---
+
+对文件进行压缩和归档操作不论是在哪个操作系统上都是最基础的也是最常用的操作，比较常见的是对一个目录进行归档压缩，或者是对一个文本文件进行压缩，这里我们就来讲一下Linux下常用的归档和压缩工具。
+
+
+
+
+# 压缩工具
+
+
+
+
+## compress
+
+
+
+
+compress是一个早期广泛流传的压缩工具，至今仍有一些古老的文件使用compress格式压缩。使用compress压缩后的文件后缀为 .Z，而使用uncompress命令可以将compress压缩的文件进行解压缩操作。这里只是提一下这个工具，由于现在大部分流行的网站中都不会compress压缩，所以大致了解一下即可。
+
+
+
+
+##  
+
+
+
+
+## gzip
+
+
+
+
+**NAME**
+
+
+
+
+gzip, gunzip, zcat - compress or expand files
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+Gzip reduces the size of the named files using Lempel-Ziv coding (LZ77). Whenever  
+
+possible, each file is replaced by one with the extension .gz, while keeping the  
+
+same ownership modes, access and modification times. (The default extension is -gz  
+
+for VMS, z for MSDOS, OS/2 FAT, Windows NT FAT and Atari.) If no files are speci-  
+
+fied, or if a file name is "-", the standard input is compressed to the standard  
+
+output. Gzip will only attempt to compress regular files. In particular, it will  
+
+ignore symbolic links.
+
+
+
+
+gzip使用的是名叫LZ77的压缩算法，使用gzip压缩后的文件后缀为 .gz, 并且被gzip压缩的文件将会保留所有者权限、atime和mtime。被gzip压缩的文件默认会删除原文件。
+
+
+
+
+使用gzip压缩的文件可以使用gunzip进行解压缩，也可以使用下面提到的-d选项进行解压缩。被解压缩的文件默认会删除原文件。
+
+
+
+
+使用gzip压缩的文本文件可以不用解压缩，直接使用zcat命令查看内容。
+
+
+
+
+
+
+
+**常用选项**
+
+
+
+
+**-c --stdout --to-stdout** : 将gzip的输出写到标准输出，并且保留原文件。
+
+
+
+
+**-d --decompress --uncompress** : 将gzip压缩后的文件解压缩
+
+
+
+
+**-r --recursive** : 将目录下的所有文件一并压缩。默认gzip会忽略目录。
+
+
+
+
+**-v --verbose** : 显示详细的压缩过程。
+
+
+
+
+**-# --fast --best** : #表示1-9之间的数字,-1相当于--fast,表示使用最小但是最快的压缩率,-9相当于--best,表示使用最大但是最慢的压缩率。默认的压缩等级是6。
+
+
+
+
+
+
+
+**操作范例**
+
+
+
+    
+    <span style="font-family: 'courier new', courier, monospace;">[root@edu test]# cp /etc/fstab .  #向目录中复制一个fstab文件
+    [root@edu test]# cp -a /etc/pam.d .  #向目录中复制一个pam.d目录
+    [root@edu test]# ls -lh  #查看文件的大小
+    total 4.0K
+    -rw-r--r--. 1 root root 646 May 15 15:08 fstab
+    drwxr-xr-x. 1 root root 544 Apr 19 18:51 pam.d
+    [root@edu test]# gzip -v fstab   #使用gzip的默认对fstab文件进行压缩
+    fstab: 45.8% -- replaced with fstab.gz
+    [root@edu test]# ls -lh  #查看压缩后的文件，可以发现，默认情况下，gzip会将压缩的原文件删除，并且压缩后的文件将会为 原文件名.gz。通过与压缩前文件的对比，可以发现压缩了接近50%。
+    total 4.0K
+    -rw-r--r--. 1 root root 374 May 15 15:08 fstab.gz
+    drwxr-xr-x. 1 root root 544 Apr 19 18:51 pam.d
+    [root@edu test]# gzip -v pam.d/  #尝试对目录进行压缩，发现gzip默认会忽略目录
+    gzip: pam.d/ is a directory -- ignored
+    [root@edu test]# gzip -c -r -v -9 pam.d > pam.d.gz  #使用-r选项让gzip对目录的内容以最大的压缩率进行进行压缩，并且输出至标准输出，然后对输出重定向至pam.d.gz文件中。
+    pam.d/config-util: 47.8%
+    pam.d/other: 54.5%
+    pam.d/chfn: 52.1%
+    pam.d/chsh: 52.1%
+    pam.d/login: 61.3%
+    pam.d/remote: 63.4%
+    pam.d/runuser: 27.3%
+    pam.d/runuser-l: 29.0%
+    pam.d/su: 56.1%
+    pam.d/su-l: 30.7%
+    pam.d/systemd-user: 31.8%
+    pam.d/polkit-1: 56.8%
+    pam.d/crond: 47.8%
+    pam.d/vmtoolsd: 63.7%
+    pam.d/vlock: 16.7%
+    pam.d/smtp.postfix: 38.2%
+    pam.d/smtp: 38.2%
+    pam.d/sshd: 64.9%
+    pam.d/passwd: 38.3%
+    pam.d/sudo: 43.6%
+    pam.d/sudo-i: 39.6%
+    pam.d/system-auth-ac: 61.9%
+    pam.d/system-auth: 61.9%
+    pam.d/postlogin-ac: 36.7%
+    pam.d/postlogin: 36.7%
+    pam.d/password-auth-ac: 61.9%
+    pam.d/password-auth: 61.9%
+    pam.d/fingerprint-auth-ac: 58.4%
+    pam.d/fingerprint-auth: 58.4%
+    pam.d/smartcard-auth-ac: 56.8%
+    pam.d/smartcard-auth: 56.8%
+    [root@edu test]# ls -lh  #可以发现，使用了-c选项后，原文件并没有被删除
+    total 12K
+    -rw-r--r--. 1 root root 374 May 15 15:08 fstab.gz
+    drwxr-xr-x. 1 root root 544 Apr 19 18:51 pam.d
+    -rw-r--r--. 1 root root 6.7K May 15 15:09 pam.d.gz
+    [root@edu test]# du -sh pam.d #对比压缩前后的文件大小，可以发现压缩了近10倍。
+    124K pam.d
+    </span>
+
+
+
+
+##  
+
+
+
+
+## bzip2
+
+
+
+
+**NAME**
+
+
+
+
+bzip2, bunzip2 - a block-sorting file compressor, v1.0.6  
+
+bzcat - decompresses files to stdout
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+bzip2 compresses files using the Burrows-Wheeler block sorting text compression algorithm,  
+
+and Huffman coding. Compression is generally considerably better than that achieved by  
+
+more conventional LZ77/LZ78-based compressors, and approaches the performance of the PPM  
+
+family of statistical compressors.
+
+
+
+
+bzip2使用的是名叫Burrows-Wheeler block的压缩技术，使用bzip2压缩后的文件后缀为 .bz2。被bzip2压缩的文件默认会删除原文件。
+
+
+
+
+使用bzip2压缩的文件可以使用bunzip2进行解压缩，也可以使用下面提到的-d选项进行解压缩。被解压缩的文件默认会删除原压缩文件。
+
+
+
+
+使用bzip2压缩的文本文件可以不用解压缩，直接使用bzcat命令查看内容。
+
+
+
+
+**常用选项**
+
+
+
+
+**-c --stdout** : 将bzip2的输出写到标准输出，并且保留原文件。
+
+
+
+
+**-d --decompress** : 将bzip2压缩后的文件解压缩
+
+
+
+
+**-k --keep** : 压缩和解压缩时保留原文件。
+
+
+
+
+**-v --verbose** : 显示详细的压缩过程。
+
+
+
+
+**-# --fast --best** : #表示1-9之间的数字,-1相当于--fast,表示使用最小但是最快的压缩率,-9相当于--best,表示使用最大但是最慢的压缩率。默认的压缩等级是6。
+
+
+
+
+
+
+
+**操作范例**
+
+
+
+
+注意：可以发现，各个压缩工具所使用的选项都大致相同。
+
+
+
+    
+    <span style="font-family: 'courier new', courier, monospace;">[root@edu test]# cp /etc/fstab .  #复制fstab文件
+    [root@edu test]# cp -a /etc/pam.d/ .  #复制pam.d目录
+    [root@edu test]# ls -lh  #查看大小
+    total 4.0K
+    -rw-r--r--. 1 root root 646 May 15 15:21 fstab
+    drwxr-xr-x. 1 root root 544 Apr 19 18:51 pam.d
+    [root@edu test]# bzip2 -v fstab #使用bzip2的默认对fstab进行压缩
+      fstab:    1.509:1,  5.300 bits/byte, 33.75% saved, 646 in, 428 out.
+    [root@edu test]# ls -lh  #可以发现原文件被删除，并且压缩后的文件也很小
+    total 4.0K
+    -rw-r--r--. 1 root root 428 May 15 15:21 fstab.bz2
+    drwxr-xr-x. 1 root root 544 Apr 19 18:51 pam.d
+    [root@edu test]# bzip2 pam.d/  #尝试压缩目录，但是失败了
+    bzip2: Input file pam.d/ is a directory.
+    [root@edu test]# bzip2 -c -k -9 pam.d/* > pam.d.bz2 #使用-c和通配符*对pam.d目录下的所有文件进行压缩
+    [root@edu test]# ls -lh  #压缩成功
+    total 16K
+    -rw-r--r--. 1 root root 646 May 15 15:21 fstab
+    -rw-r--r--. 1 root root 428 May 15 15:21 fstab.bz2
+    drwxr-xr-x. 1 root root 544 Apr 19 18:51 pam.d
+    -rw-r--r--. 1 root root 7.6K May 15 15:30 pam.d.bz2
+    [root@edu test]# bzcat fstab.bz2   #不需要对bz2文件进行解压缩，直接查看被压缩后的文本文件内容
+    
+    #
+    # /etc/fstab
+    # Created by anaconda on Thu Apr 19 18:45:35 2018
+    #
+    # Accessible filesystems, by reference, are maintained under '/dev/disk'
+    # See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+    #
+    UUID=c340f1a3-e07e-40e8-8ecc-29ebd0480fe0 /                       btrfs   subvol=root     0 0
+    UUID=616bbfe3-4356-4c91-a0a9-86c83fc097de /boot                   xfs     defaults        0 0
+    UUID=c340f1a3-e07e-40e8-8ecc-29ebd0480fe0 /home                   btrfs   subvol=home     0 0
+    UUID=f0b1e78c-38fb-4036-afcb-9857b31498fd swap                    swap    defaults        0 0
+    /dev/sr0				/media			iso9660	  defaults,ro	  0 0	 
+    [root@edu test]# bzip2 -d -k -v fstab.bz2  #使用-d选项对fstab.bz2进行解压缩，并使用-k选项保留压缩文件
+      fstab.bz2: done
+    [root@edu test]# ls -lh  #成功
+    total 8.0K
+    -rw-r--r--. 1 root root 646 May 15 15:21 fstab
+    -rw-r--r--. 1 root root 428 May 15 15:21 fstab.bz2
+    drwxr-xr-x. 1 root root 544 Apr 19 18:51 pam.d
+    
+    </span>
+
+
+
+
+##  
+
+
+
+
+## xz
+
+
+
+
+**NAME**
+
+
+
+
+xz, unxz, xzcat- Compress or decompress .xz and .lzma files
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+xz is a general-purpose data compression tool with command line syntax similar to gzip(1)  
+
+and bzip2(1). The native file format is the .xz format, but the legacy .lzma format used  
+
+by LZMA Utils and raw compressed streams with no container format headers are also sup‐  
+
+ported.
+
+
+
+
+xz是一款通用目的的数据压缩工具，命令行的语法与gzip和bzip2非常相似，使用xz压缩后的文件后缀为 .xz。被xz压缩的文件默认会删除原文件。
+
+
+
+
+使用xz压缩的文件可以使用unxz进行解压缩，也可以使用下面提到的-d选项进行解压缩。被解压缩的文件默认会删除原压缩文件。
+
+
+
+
+使用xz压缩的文本文件可以不用解压缩，直接使用xzcat命令查看内容。
+
+
+
+
+
+
+
+**常用选项**
+
+
+
+
+**-c --stdout --to-stdout** : 将xz的输出写到标准输出，并且保留原文件。
+
+
+
+
+**-d --decompress --uncompress** : 将xz压缩后的文件解压缩
+
+
+
+
+**-k --keep** : 压缩和解压缩时保留原文件。
+
+
+
+
+**-r --recursive** : 将目录下的所有文件一并压缩。默认xz会忽略目录。
+
+
+
+
+**-v --verbose** : 显示详细的压缩过程。
+
+
+
+
+**-# --fast --best** : #表示1-9之间的数字,-1相当于--fast,表示使用最小但是最快的压缩率,-9相当于--best,表示使用最大但是最慢的压缩率。默认的压缩等级是6。
+
+
+
+
+
+
+
+**操作范例**
+
+
+
+    
+    <span style="font-family: 'courier new', courier, monospace;">[root@edu test]# cp /etc/fstab .   #复制fstab文件
+    [root@edu test]# cp -a /etc/pam.d/ .   #复制pam.d目录
+    [root@edu test]# ls -lh  #查看大小
+    total 4.0K
+    -rw-r--r--. 1 root root 646 May 15 15:33 fstab
+    drwxr-xr-x. 1 root root 544 Apr 19 18:51 pam.d
+    [root@edu test]# xz -v fstab   #使用xz的默认对fstab进行压缩
+    fstab (1/1)
+      100 %               432 B / 646 B = 0.669                                    
+    [root@edu test]# ls -lh  #可以发现原文件被删除，且压缩后的文件大小变小
+    total 4.0K
+    -rw-r--r--. 1 root root 432 May 15 15:33 fstab.xz
+    drwxr-xr-x. 1 root root 544 Apr 19 18:51 pam.d
+    [root@edu test]# xz -v pam.d/  #尝试对目录进行压缩，但是失败了
+    pam.d/ (1/1)
+    xz: pam.d/: Is a directory, skipping
+    [root@edu test]# xz -c -k -9 pam.d/* > pam.d.xz  #使用-c选项和通配符*来完成对目录下所有文件的压缩
+    [root@edu test]# ls -lh  #压缩成功
+    total 16K
+    -rw-r--r--. 1 root root  432 May 15 15:33 fstab.xz
+    drwxr-xr-x. 1 root root  544 Apr 19 18:51 pam.d
+    -rw-r--r--. 1 root root 8.1K May 15 15:34 pam.d.xz
+    [root@edu test]# xzcat fstab.xz  #使用xzcat命令可以不用解压缩文本文件直接查看压缩后的文本文件内容
+    
+    #
+    # /etc/fstab
+    # Created by anaconda on Thu Apr 19 18:45:35 2018
+    #
+    # Accessible filesystems, by reference, are maintained under '/dev/disk'
+    # See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+    #
+    UUID=c340f1a3-e07e-40e8-8ecc-29ebd0480fe0 /                       btrfs   subvol=root     0 0
+    UUID=616bbfe3-4356-4c91-a0a9-86c83fc097de /boot                   xfs     defaults        0 0
+    UUID=c340f1a3-e07e-40e8-8ecc-29ebd0480fe0 /home                   btrfs   subvol=home     0 0
+    UUID=f0b1e78c-38fb-4036-afcb-9857b31498fd swap                    swap    defaults        0 0
+    /dev/sr0				/media			iso9660	  defaults,ro	  0 0	 
+    [root@edu test]# xz -d -k -v fstab.xz  #对fstab进行解压缩
+    fstab.xz (1/1)
+      100 %               432 B / 646 B = 0.669                                    
+    [root@edu test]# ls -lh  #成功
+    total 20K
+    -rw-r--r--. 1 root root  646 May 15 15:33 fstab
+    -rw-r--r--. 1 root root  432 May 15 15:33 fstab.xz
+    drwxr-xr-x. 1 root root  544 Apr 19 18:51 pam.d
+    -rw-r--r--. 1 root root 8.1K May 15 15:34 pam.d.xz
+    </span>
+
+
+
+
+#  
+
+
+
+
+# 归档工具
+
+
+
+
+归档（archive）其实就是将多个文件打包成一个文件，并且保留原有的目录结构。归档通常会结合压缩工具用来对一些文件进行备份。上面提到的压缩工具有些看起来可以对目录进行归档压缩，但是根据Linux之禅——每个命令只需要完成单一功能，通过组合多个命令来完成复杂功能，使用压缩工具来进行归档就有点不合适了，而且术业有专攻，使用压缩工具进行归档压缩也不一定比归档工具做得好。
+
+
+
+
+## zip
+
+
+
+
+**NAME**
+
+
+
+
+zip - package and compress (archive) files
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+zip is a compression and file packaging utility for Unix, VMS, MSDOS, OS/2, Windows  
+
+9x/NT/XP, Minix, Atari, Macintosh, Amiga, and Acorn RISC OS. It is analogous to a combi‐  
+
+nation of the Unix commands tar(1) and compress(1) and is compatible with PKZIP (Phil  
+
+Katz's ZIP for MSDOS systems).
+
+
+
+
+zip是一个用于文件压缩和打包的工具，在大部分操作系统中都被原生支持，这个命令用法很简单：
+
+
+
+
+zip  ZIP_FILE FILE... :  将指定FILE压缩为ZIP_FILE
+
+
+
+
+unzip ZIP_FILE : 将指定ZIP_FILE解压缩到当前目录下
+
+
+
+
+**ZIP_FILE** : 压缩后的zip文件名。
+
+
+
+
+**FILE**: 需要被压缩的文件，可以有多个。
+
+
+
+
+这里就不再对zip做深入讲解了，想要了解的可以通过man zip查看zip命令用法
+
+
+
+
+##  
+
+
+
+
+## tar
+
+
+
+
+**NAME**
+
+
+
+
+tar
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+ 
+
+
+
+
+GNU `tar' saves many files together into a single tape or disk archive, and can restore  
+
+individual files from the archive.
+
+
+
+
+Note that this manual page contains just very brief description (or more like a list of  
+
+possible functionality) originally generated by the help2man utility. The full documenta  
+
+tion for tar is maintained as a Texinfo manual. If the info and tar programs are properly  
+
+installed at your site, the command `info tar' should give you access to the complete manual.
+
+
+
+
+tar命令用于将多个文件保存成一个归档文件，也可以将归档文件恢复成原本的多个文件。由于tar命令内置了当前流行的一些压缩工具的算法，比如gzip、bzip2、xz。
+
+
+
+
+###  
+
+
+
+
+### **主要工作模式**
+
+
+
+
+**-c, --create** : 指明当前为创建模式，创建归档文件
+
+
+
+
+**-A, --catenate, --concatenate** : 指明当前为追加模式，将tar文件追加到另一个tar文件末尾
+
+
+
+
+**--delete**: 指明当前为删除模式，将tar文件中的指定文件删除
+
+
+
+
+**-r, --append** : 指明当前为追加模式，将文件追加到tar文件末尾
+
+
+
+
+**-t, --list** : 列出tar文件中的所有文件
+
+
+
+
+**-x, --extract, --get** : 将tar文件中的内容提取出来
+
+
+
+
+
+
+
+### **通用选项**
+
+
+
+
+**-C, --directory=DIR** : 将tar文件的内容提取到指定目录中。默认提取到当前目录下。
+
+
+
+
+**-f, --file=ARCHIVE** : 指明要创建的tar文件的文件名
+
+
+
+
+**-j, --bzip2** : 使用bzip2对归档文件进行压缩/解压缩
+
+
+
+
+**-J, --xz** : 使用xz对归档文件进行压缩/解压缩
+
+
+
+
+**-z, --gzip** : 使用gzip 对归档文件进行压缩/解压缩
+
+
+
+
+**-v, --verbose** : 显示归档或者提取文件的过程
+
+
+
+
+需要注意的是，tar命令的多个短选项可以合并成一个短选项，合并后的短选项可以去掉最前面的-，只保留选项后面的单词。
+
+
+
+
+
+
+
+### **操作范例**
+
+
+
+
+#### 创建一个普通归档文件
+
+
+
+    
+    <span style="font-family: 'courier new', courier, monospace;">[root@edu test]# cp -a /etc/pam.d/ .
+    [root@edu test]# tar cf pam.d.tar pam.d/
+    [root@edu test]# ls -l
+    total 40
+    drwxr-xr-x. 1 root root   544 Apr 19 18:51 pam.d
+    -rw-r--r--. 1 root root 40960 May 15 16:11 pam.d.tar
+    [root@edu test]# du -sh pam.d
+    124K	pam.d
+    </span>
+
+
+
+
+#### 创建一个压缩的归档文件（使用tar命令完成）
+
+
+
+    
+    <span style="font-family: 'courier new', courier, monospace;">[root@edu test]# tar cJvf pam.d.tar.xz pam.d/  #需要注意的是，最好手动为相应的压缩算法指定压缩后的文件的后缀名（此例中为.xz）,否则tar命令在自动解压缩时将无法识别该文件
+    pam.d/
+    pam.d/config-util
+    pam.d/other
+    pam.d/chfn
+    pam.d/chsh
+    pam.d/login
+    pam.d/remote
+    pam.d/runuser
+    pam.d/runuser-l
+    pam.d/su
+    pam.d/su-l
+    pam.d/systemd-user
+    pam.d/polkit-1
+    pam.d/crond
+    pam.d/vmtoolsd
+    pam.d/vlock
+    pam.d/smtp.postfix
+    pam.d/smtp
+    pam.d/sshd
+    pam.d/passwd
+    pam.d/sudo
+    pam.d/sudo-i
+    pam.d/system-auth-ac
+    pam.d/system-auth
+    pam.d/postlogin-ac
+    pam.d/postlogin
+    pam.d/password-auth-ac
+    pam.d/password-auth
+    pam.d/fingerprint-auth-ac
+    pam.d/fingerprint-auth
+    pam.d/smartcard-auth-ac
+    pam.d/smartcard-auth
+    [root@edu test]# ls -l
+    total 44
+    drwxr-xr-x. 1 root root   544 Apr 19 18:51 pam.d
+    -rw-r--r--. 1 root root 40960 May 15 16:11 pam.d.tar
+    -rw-r--r--. 1 root root  2276 May 15 16:13 pam.d.tar.xz</span>
+
+
+
+
+#### 解压缩并展开创建出来的文件
+
+
+
+    
+    <span style="font-family: 'courier new', courier, monospace;">[root@edu test]# mkdir new  #创建一个目录new
+    [root@edu test]# tar xf pam.d.tar.xz -C new #此处可以发现我没有指定解压所使用的算法，因为tar文件会根据后缀名自动匹配相应的解压算法。使用-C将文件提取到new目录下
+    [root@edu test]# ls -lh 
+    total 44K
+    drwxr-xr-x. 1 root root 10 May 15 16:15 new
+    drwxr-xr-x. 1 root root 544 Apr 19 18:51 pam.d
+    -rw-r--r--. 1 root root 40K May 15 16:11 pam.d.tar
+    -rw-r--r--. 1 root root 2.3K May 15 16:13 pam.d.tar.xz
+    [root@edu test]# ls -lh new/  # 提取成功
+    total 0
+    drwxr-xr-x. 1 root root 544 Apr 19 18:51 pam.d
+    </span>
+
+
+
+
+#### 查看压缩后的归档文件内容
+
+
+
+    
+    <span style="font-family: 'courier new', courier, monospace;">[root@edu test]# tar tf pam.d.tar.xz  #与解压缩相同，tar也会自动匹配解压所需要使用的算法。
+    pam.d/
+    pam.d/config-util
+    pam.d/other
+    pam.d/chfn
+    pam.d/chsh
+    pam.d/login
+    pam.d/remote
+    pam.d/runuser
+    pam.d/runuser-l
+    pam.d/su
+    pam.d/su-l
+    pam.d/systemd-user
+    pam.d/polkit-1
+    pam.d/crond
+    pam.d/vmtoolsd
+    pam.d/vlock
+    pam.d/smtp.postfix
+    pam.d/smtp
+    pam.d/sshd
+    pam.d/passwd
+    pam.d/sudo
+    pam.d/sudo-i
+    pam.d/system-auth-ac
+    pam.d/system-auth
+    pam.d/postlogin-ac
+    pam.d/postlogin
+    pam.d/password-auth-ac
+    pam.d/password-auth
+    pam.d/fingerprint-auth-ac
+    pam.d/fingerprint-auth
+    pam.d/smartcard-auth-ac
+    pam.d/smartcard-auth</span>
+
+
+
+
+ 

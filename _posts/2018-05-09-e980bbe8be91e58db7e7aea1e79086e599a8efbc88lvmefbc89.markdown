@@ -1,0 +1,1436 @@
+---
+author: edmund
+comments: true
+date: 2018-05-09 08:14:00+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/05/09/%e9%80%bb%e8%be%91%e5%8d%b7%e7%ae%a1%e7%90%86%e5%99%a8%ef%bc%88lvm%ef%bc%89/
+slug: '%e9%80%bb%e8%be%91%e5%8d%b7%e7%ae%a1%e7%90%86%e5%99%a8%ef%bc%88lvm%ef%bc%89'
+title: 逻辑卷管理器（LVM）
+wordpress_id: 266
+categories:
+- Linux技术
+- Linux随笔
+post_format:
+- 日志
+tags:
+- LVM
+- 命令
+---
+
+# LVM
+
+
+
+
+有时候我们会碰到这样的场景，刚开始为一个项目划分了50G的空间供其使用，然而在项目进行到一半的时候，发现50G不够用了，这个时候该怎么办。这个时候如果还有空闲空间，就划出一块空闲空间，比如200G给这个项目，然后分区挂载格式化，将原本项目空间中的所有文件复制到这个新的空间中。如果没有空闲空间了，那还要去买一块新的硬盘，分区挂载格式化。后来随着项目的继续进展你发现这个项目的空间划分多了，100G就够了，而且这个时候别的项目的空间也不够了，那该怎么办？继续划分新的空间出来，然后将100G划分给空间浪费的项目，200G划分给空间不够的项目，然后分区挂载格式化，将所有项目文件复制过来。是不是感觉看着就头大？但是在没有LVM的时候，你还真的就要这么干。
+
+
+
+
+LVM（Logical Volume Manager ）,称为逻辑卷管理器，LVM利用Linux内核中的dm（device mapper）模块，在底层的存储设备之上虚拟化出一层类似于文件系统的层次，可以将多个物理设备一同虚拟化成一个虚拟存储设备，然后对外提供存储空间，而且在LVM层面上的分区可以自由调整大小，可以扩大分区也可以缩小分区而几乎不影响到分区中的数据。
+
+
+
+
+LVM是怎么做到可以调整分区空间大小的？这就要涉及到LVM中的一些概念。
+
+
+
+
+
+
+ 	
+  * **物理卷Physical volume (PV)**：物理卷就是底层存储设备，可以是硬盘也可以是硬盘分区，物理卷中有一个特殊的首部（header）标明这个设备是一个物理卷，除了首部之外的空间被分割成了一个个的物理区域（physical extent）。
+
+ 	
+  * **卷组Volume group (VG)**：卷组就是将一个或多个物理卷包含到一起的形成的一个虚拟存储空间
+
+ 	
+  * **逻辑卷Logical volume (LV)**：逻辑卷就类似于硬盘中的分区，只不过逻辑卷是在LVM层次上的分区，且这个分区可以自由调整大小。
+
+ 	
+  * **物理区域Physical extent (PE)**：物理区域就类似于文件系统中的块（block）的概念，是组成文件系统的最小的存储单元，即可以物理卷可以指派给逻辑卷的最小单位。
+
+
+
+
+如下图所示：
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/05/LVM.jpg)
+
+
+
+
+需要注意的是，卷组与卷组之间是隔离的，也就是说无法从卷组1的空间拓展至卷组2的空间。
+
+
+
+
+通过这张图可以很容易看明白，存储设备（可以是硬盘或分区）首先创建成为物理卷（PV）以得到基础的虚拟存储，然后创建出卷组（VG），将各个PV加入到VG中，在卷组中会有各种指标，比如PE的大小，在PV加入到VG中的时候，就会收到VG的约束，PV的空间会被分割成一个又一个的PE，在以后为逻辑卷（LV）分配空间时，就会按照PE为单位进行分配。此时如果觉得空间不够大，可以加入新的存储设备，并且创建成为PV，然后直接加入到某一个VG中，VG的空间会随之增长，同理，如果觉得空间过于富余，可以将PV移出VG中，VG的空间就会减少，而且如果移动的时候发现PE中已经有存储了数据，可以通过命令将该PV中的PE中的数据移动到其他的PV中，从而不影响数据的正确性。
+
+
+
+
+就像上面说的那样，VG就类似于一个抽象的存储设备，可以通过在上面创建LV来实现对VG的分区，而创建LV的方式就是分配给其一定数目的PE。至此，LV已经是一个可以当做普通分区来使用的设备了，可以在上面创建文件系统。在使用中如果LV的空间不足，可以向VG申请空闲的PE，直接实现空间的拓展，当然这还不够，因为就像普通的文件系统一样，就算是你的硬盘容量突然变大了，文件系统在格式化的时候只格式化了原本的部分，新多出来的部分并没有格式化，所以我们除了拓展物理空间外，还需要拓展文件系统空间。如果LV的空间过多，也可以通过释放一些空闲的PE来实现空间的缩小，当然和上面增长相反，我们需要先减小文件系统的空间，然后才能减小LV的空间，这个很容易理解，因为文件系统是建立在物理空间之上的。
+
+
+
+
+讲到这里，我们已经知道了LVM是如何实现空间的动态变化的了。接下来我们通过实例来展示CentOS 7上的LVM。
+
+
+
+
+
+# LVM基本操作
+
+
+
+
+## pv管理工具
+
+
+
+
+pv管理工具都是以pv开头的命令，在命令行键入pv后双击tab按键就可以看见所有的pv管理命令，这里我只对常用的命令做介绍，那些不常用的命令请自行通过帮助手册来获取信息（可以通过我的另一篇博客 [命令帮助的获取](http://118.25.17.78/topics/46) 来了解如何获取命令帮助）。
+
+
+
+
+
+### pvs
+
+
+
+
+**NAME**
+
+
+
+
+pvs - Display information about physical volumes
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+pvs produces formatted output about PVs.
+
+
+
+
+这个命令的使用很简单，基本上不需要什么选项，用来查看当前系统上所有的物理卷的简要情况。
+
+
+
+
+    
+    [root@edu ~]# pvs
+      PV         VG   Fmt  Attr PSize PFree
+      /dev/sda7  myvg lvm2 a--  9.98g 6.98g
+      /dev/sda8  myvg lvm2 a--  9.98g 9.98g
+
+
+
+
+###  
+
+
+
+
+### pvdisplay
+
+
+
+
+**NAME**
+
+
+
+
+pvdisplay - Display various attributes of physical volume(s)
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+pvdisplay shows the attributes of PVs, like size, physical extent size, space used for the
+VG descriptor area, etc.
+
+
+
+
+pvdisplay命令的使用方法和pvs一样，但是pvdisplay能够显示比pvs更加详细的信息，比如PE的大小，PE的个数，UUID等。
+
+
+
+
+    
+    [root@edu ~]# pvdisplay
+      --- Physical volume ---
+      PV Name               /dev/sda7
+      VG Name               myvg
+      PV Size               10.00 GiB / not usable 16.00 MiB
+      Allocatable           yes 
+      PE Size               16.00 MiB
+      Total PE              639
+      Free PE               447
+      Allocated PE          192
+      PV UUID               ZJKnUS-Yk1D-agUj-brc2-09yN-4FQ3-DpKj8J
+       
+      --- Physical volume ---
+      PV Name               /dev/sda8
+      VG Name               myvg
+      PV Size               10.00 GiB / not usable 16.00 MiB
+      Allocatable           yes 
+      PE Size               16.00 MiB
+      Total PE              639
+      Free PE               639
+      Allocated PE          0
+      PV UUID               pitjfP-DzMU-u5mP-60Kv-u61J-AKnE-OZZbb8
+    
+
+
+
+
+###  
+
+
+
+
+### pvcreate
+
+
+
+
+**NAME**
+
+
+
+
+pvcreate - Initialize physical volume(s) for use by LVM
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+pvcreate initializes a PV so that it is recognized as belonging to LVM, and allows the PV
+to be used in a VG. A PV can be a disk partition, whole disk, meta device, or loopback
+file.
+
+
+
+
+pvcreate命令用于将存储设备创建成为一个PV，使得存储设备能够被LVM识别，进而能够被VG使用。存储设备可以是硬盘也可以是分区。
+
+
+
+
+该命令的使用方法也很简单，**pvcreate [DEVICES...]**,后面跟的是设备文件的路径，可以有多个设备文件。
+
+
+
+
+    
+    [root@edu ~]# pvcreate /dev/sda9
+      Physical volume "/dev/sda9" successfully created.
+    [root@edu ~]# pvcreate /dev/sda10
+      Physical volume "/dev/sda10" successfully created.
+    [root@edu ~]# pvs
+      PV         VG   Fmt  Attr PSize  PFree 
+      /dev/sda10      lvm2 ---  10.00g 10.00g
+      /dev/sda7  myvg lvm2 a--   9.98g  6.98g
+      /dev/sda8  myvg lvm2 a--   9.98g  9.98g
+      /dev/sda9       lvm2 ---  10.00g 10.00g
+
+
+
+
+###  
+
+
+
+
+### pvremove
+
+
+
+
+**NAME**
+
+
+
+
+pvremove - Remove LVM label(s) from physical volume(s)
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+pvremove wipes the label on a device so that LVM will no longer recognise it as a PV.
+
+
+
+
+A PV cannot be removed from a VG while it is used by an active LV.
+
+
+
+
+pvremove用于删除一个PV，也就是抹去设备上的PV标签，使其无法再被LVM识别为PV。
+
+
+
+
+    
+    [root@edu ~]# pvremove /dev/sda11
+      Labels on physical volume "/dev/sda11" successfully wiped.
+    [root@edu ~]# pvs
+      PV         VG   Fmt  Attr PSize   PFree  
+      /dev/sda10 tvg  lvm2 a--  <10.00g <10.00g
+      /dev/sda7  myvg lvm2 a--    9.98g   6.98g
+      /dev/sda8  myvg lvm2 a--    9.98g   9.98g
+      /dev/sda9  tvg  lvm2 a--  <10.00g <10.00g
+    
+
+
+
+
+###  
+
+
+
+
+### pvmove
+
+
+
+
+**NAME**
+
+
+
+
+pvmove - Move extents from one physical volume to another
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+pvmove moves the allocated physical extents (PEs) on a source PV to one or more destina‐
+tion PVs. You can optionally specify a source LV in which case only extents used by that
+LV will be moved to free (or specified) extents on the destination PV. If no destination
+PV is specified, the normal allocation rules for the VG are used.
+
+
+
+
+pvmove命令将指定的PV中的PE转移到其他的PV中，避免在卸载PV时该PV中的数据也一并被删除。
+
+
+
+
+下面不对该命令进行演示，需要注意的是，在进行vgremove，也就是在vg中卸载pv前，一定要使用该命令将pv中的数据转移到其他的pv中。
+
+
+
+
+
+## vg管理工具
+
+
+
+
+其实在LVM中，各种管理工具的命名方式都如出一辙，基本上只要会一类工具的操作，其他的工具也就很容易操作了。
+
+
+
+
+
+### vgs
+
+
+
+
+**NAME**
+
+
+
+
+vgs - Display information about volume groups
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+vgs produces formatted output about VGs.
+
+
+
+
+vgs命令用于显示卷组的概要信息。
+
+
+
+
+    
+    [root@edu ~]# vgs
+      VG   #PV #LV #SN Attr   VSize   VFree  
+      myvg   2   1   0 wz--n- <19.97g <16.97g
+    
+
+
+
+
+###  
+
+
+
+
+### vgdisplay
+
+
+
+
+**NAME**
+
+
+
+
+vgdisplay - Display volume group information
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+vgdisplay shows the attributes of VGs, and the associated PVs and LVs.
+
+
+
+
+vgdisplay用于显示更详细的卷组信息。
+
+
+
+
+    
+    [root@edu ~]# vgdisplay 
+      --- Volume group ---
+      VG Name               myvg
+      System ID             
+      Format                lvm2
+      Metadata Areas        2
+      Metadata Sequence No  8
+      VG Access             read/write
+      VG Status             resizable
+      MAX LV                0
+      Cur LV                1
+      Open LV               1
+      Max PV                0
+      Cur PV                2
+      Act PV                2
+      VG Size               <19.97 GiB
+      PE Size               16.00 MiB
+      Total PE              1278
+      Alloc PE / Size       192 / 3.00 GiB
+      Free  PE / Size       1086 / <16.97 GiB
+      VG UUID               iFthLn-d6NJ-rfKX-KRhO-gYZe-E3L5-mDZI1C
+    
+
+
+
+
+###  
+
+
+
+
+### vgcreate
+
+
+
+
+**NAME**
+
+
+
+
+vgcreate - Create a volume group
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+vgcreate creates a new VG on block devices. If the devices were not previously intialized
+as PVs with pvcreate(8), vgcreate will inititialize them, making them PVs. The pvcreate
+options for initializing devices are also available with vgcreate.
+
+
+
+
+vgcreate用于根据指定的物理卷（PE）创建卷组（VG）。
+
+
+
+
+
+#### 命令用法
+
+
+
+
+**vgcreate [OPTIONS...] VG_NAME PV_PATH..**
+
+
+
+
+
+#### 常用选项
+
+
+
+
+**-s|--physicalextentsize Size[m|UNIT]** ：设置pe的大小，给定的值必须为2的幂，且至少为一个扇区的大小，或者是最小为128KB，该值一旦给定就无法修改，除非重新创建VG。
+
+
+
+
+    
+    [root@edu ~]# vgcreate -s 4M tvg /dev/sda{9,10}
+      Volume group "tvg" successfully created
+    [root@edu ~]# vgs
+      VG   #PV #LV #SN Attr   VSize   VFree  
+      myvg   2   1   0 wz--n- <19.97g <16.97g
+      tvg    2   0   0 wz--n-  19.99g  19.99g
+    
+
+
+
+
+###  
+
+
+
+
+### vgextend
+
+
+
+
+**NAME**
+
+
+
+
+vgextend - Add physical volumes to a volume group
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+vgextend adds one or more PVs to a VG. This increases the space available for LVs in the
+VG.
+
+
+
+
+vgextend用于扩展VG的空间，将额外的PV添加到VG中，使得VG能为LV分配更多的空间。
+
+
+
+
+
+#### 命令用法
+
+
+
+
+**vgextend VG_NAME PV_PATH [PV_PATH...]**
+
+
+
+
+    
+    [root@edu ~]# vgextend tvg /dev/sda11
+      Physical volume "/dev/sda11" successfully created.
+      Volume group "tvg" successfully extended
+    [root@edu ~]# vgs
+      VG   #PV #LV #SN Attr   VSize   VFree  
+      myvg   2   1   0 wz--n- <19.97g <16.97g
+      tvg    3   0   0 wz--n-  22.24g  22.24g
+    
+
+
+
+
+###  
+
+
+
+
+### vgreduce
+
+
+
+
+**NAME**
+
+
+
+
+vgreduce - Remove physical volume(s) from a volume group
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+vgreduce removes one or more unused PVs from a VG.
+
+
+
+
+vgreduce用于减小VG的空间，将未被使用过的PV从VG中移除。需要注意的是，使用该命令前请先执行pvmove将PV中的PE转移到其他的PV中。
+
+
+
+
+
+#### 命令用法
+
+
+
+
+**vgreduceVG_NAME PV_PATH [PV_PATH...]**
+
+
+
+
+    
+    [root@edu ~]# pvmove /dev/sda11
+      No data to move for tvg
+    [root@edu ~]# vgreduce tvg /dev/sda11
+      Removed "/dev/sda11" from volume group "tvg"
+    [root@edu ~]# vgs
+      VG   #PV #LV #SN Attr   VSize   VFree  
+      myvg   2   1   0 wz--n- <19.97g <16.97g
+      tvg    2   0   0 wz--n-  19.99g  19.99g
+    
+
+
+
+
+###  
+
+
+
+
+### vgremove
+
+
+
+
+**NAME**
+
+
+
+
+vgremove - Remove volume group(s)
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+vgremove removes one or more VGs. If LVs exist in the VG, a prompt is used to confirm LV
+removal.
+
+
+
+
+vgremove用于删除VG，如果有VG中有激活的LV时，会提示是否继续删除VG。
+
+
+
+
+    
+    [root@edu ~]# vgremove tvg
+      Volume group "tvg" successfully removed
+    [root@edu ~]# vgs
+      VG   #PV #LV #SN Attr   VSize   VFree  
+      myvg   2   1   0 wz--n- <19.97g <16.97g
+    [root@edu ~]# vgremove myvg
+    Do you really want to remove volume group "myvg" containing 1 logical volumes? [y/n]: 
+    
+
+
+
+
+##  
+
+
+
+
+## lv管理工具
+
+
+
+
+### lvs
+
+
+
+
+**NAME**
+
+
+
+
+lvs - Display information about logical volumes
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+lvs produces formatted output about LVs.
+
+
+
+
+lvs命令用于显示逻辑卷的概要信息。
+
+
+
+
+    
+    [root@edu ~]# lvs
+      LV   VG   Attr       LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+      mylv myvg -wi-ao---- 3.00g
+
+
+
+
+###  
+
+
+
+
+### lvdisplay
+
+
+
+
+**NAME**
+
+
+
+
+lvdisplay - Display information about a logical volume
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+lvdisplay shows the attributes of LVs, like size, read/write status, snapshot information,
+etc.
+
+
+
+
+lvdisplay命令用于显示逻辑卷的详细信息。
+
+
+
+
+    
+    [root@edu ~]# lvdisplay 
+      --- Logical volume ---
+      LV Path                /dev/myvg/mylv
+      LV Name                mylv
+      VG Name                myvg
+      LV UUID                KI1fvr-LOi6-PUmz-mUCP-kkDB-sO4M-qedZfh
+      LV Write Access        read/write
+      LV Creation host, time edu.edmund.com, 2018-05-08 19:06:23 +0800
+      LV Status              available
+      # open                 1
+      LV Size                3.00 GiB
+      Current LE             192
+      Segments               1
+      Allocation             inherit
+      Read ahead sectors     auto
+      - currently set to     8192
+      Block device           253:0
+
+
+
+
+###  
+
+
+
+
+### lvcreate
+
+
+
+
+**NAME**
+
+
+
+
+lvcreate - Create a logical volume
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+lvcreate creates a new LV in a VG. For standard LVs, this requires allocating logical
+extents from the VG's free physical extents. If there is not enough free space, the VG can
+be extended with other PVs (vgextend(8)), or existing LVs can be reduced or removed (lvre‐
+move(8), lvreduce(8).)
+
+
+
+
+lvcreate命令用于在一个卷组中创建一个逻辑卷。
+
+
+
+
+
+#### 命令用法
+
+
+
+
+**lvcreate [OPTIONS...] VG_NAME**
+
+
+
+
+**lvcreate [OPTIONS...] LV_NAME** (用于创建快照卷)
+
+
+
+
+
+#### 常用选项
+
+
+
+
+**-L|--size Size[m|UNIT]**：以指定大小创建一个逻辑卷，单位可以是m|M|g|G|t|T或更大。
+
+
+
+
+**-s|--snapshot**：为指定的LV创建一个快照卷，下面有对快照卷的详细解释。
+
+
+
+
+**-n|--name LV_NAME**：为创建的LV指定名字。
+
+
+
+
+**-p|--permission rw|r**：为创建的LV指定权限，可以是r（只读的逻辑卷）或rw（可读写的逻辑卷）。
+
+
+
+
+    
+    [root@edu ~]# lvcreate -L 5G -n tlv tvg
+    WARNING: dos signature detected on /dev/tvg/tlv at offset 510. Wipe it? [y/n]: y
+      Wiping dos signature on /dev/tvg/tlv.
+      Logical volume "tlv" created.
+    [root@edu ~]# lvs
+      LV   VG   Attr       LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+      mylv myvg -wi-ao---- 3.00g                                                    
+      tlv  tvg  -wi-a----- 5.00g
+
+
+
+
+###  
+
+
+
+
+### lvextend
+
+
+
+
+**NAME**
+
+
+
+
+lvextend - Add space to a logical volume
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+lvextend extends the size of an LV. This requires allocating logical extents from the VG's
+free physical extents. If the extension adds a new LV segment, the new segment will use
+the existing segment type of the LV.
+
+
+
+
+Extending a copy-on-write snapshot LV adds space for COW blocks.
+
+
+
+
+lvextend命令用于为逻辑卷拓展空间，也就是为LV分配VG中空闲的PE。需要注意的是，文件系统的空间并不会随之增长，拓展逻辑卷空间后需要使用命令将文件系统的空间拓展。
+
+
+
+
+
+#### 命令用法
+
+
+
+
+**lvextend [OPTIONS...] LV_PATH**
+
+
+
+
+
+#### 常用选项
+
+
+
+
+**-L|--size [+]Size[m|UNIT]**：指定拓展后的逻辑卷大小，单位可以是m|M|g|G|t|T或更大。如果大小前面有+号，就表示在原有大小的基础上增加给定的大小。
+
+
+
+
+    
+    [root@edu ~]# lvextend -L +5G /dev/tvg/tlv 
+      Size of logical volume tvg/tlv changed from 5.00 GiB (1280 extents) to 10.00 GiB (2560 extents).
+      Logical volume tvg/tlv successfully resized.
+    [root@edu ~]# lvs
+      LV   VG   Attr       LSize  Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+      mylv myvg -wi-ao----  3.00g                                                    
+      tlv  tvg  -wi-a----- 10.00g
+
+
+
+
+###  
+
+
+
+
+### lvreduce
+
+
+
+
+**NAME**
+
+
+
+
+lvreduce - Reduce the size of a logical volume
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+lvreduce reduces the size of an LV. The freed logical extents are returned to the VG to be
+used by other LVs. A copy-on-write snapshot LV can also be reduced if less space is needed
+to hold COW blocks. Use lvconvert(8) to change the number of data images in a RAID or mir‐
+rored LV.
+
+
+
+
+lvreduce方法用于缩减逻辑卷的大小，缩减后空闲的PE将会被归还给VG。需要注意的是，在缩减逻辑卷空间之前必须先缩减文件系统的空间。
+
+
+
+
+
+#### 命令用法
+
+
+
+
+**lvreduce [OPTIONS...] LV_PATH**
+
+
+
+
+
+#### 常用选项
+
+
+
+
+**-L|--size [-]Size[m|UNIT]**：指定缩减后的逻辑卷大小，单位可以是m|M|g|G|t|T或更大。如果大小前面有-号，就表示在原有大小的基础上减小给定的大小。
+
+
+
+
+    
+    [root@edu ~]# lvreduce -L 8G /dev/tvg/tlv 
+      WARNING: Reducing active logical volume to 8.00 GiB.
+      THIS MAY DESTROY YOUR DATA (filesystem etc.)
+    Do you really want to reduce tvg/tlv? [y/n]: y
+      Size of logical volume tvg/tlv changed from 10.00 GiB (2560 extents) to 8.00 GiB (2048 extents).
+      Logical volume tvg/tlv successfully resized.
+    [root@edu ~]# lvs
+      LV   VG   Attr       LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+      mylv myvg -wi-ao---- 3.00g                                                    
+      tlv  tvg  -wi-a----- 8.00g
+
+
+
+
+###  
+
+
+
+
+### lvremove
+
+
+
+
+**NAME**
+
+
+
+
+lvremove - Remove logical volume(s) from the system
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+lvremove removes one or more LVs. For standard LVs, this returns the logical extents that
+were used by the LV to the VG for use by other LVs.
+
+
+
+
+lvremove命令用于将逻辑卷移除，移除后的逻辑卷将会把占用的PE归还给VG。
+
+
+
+
+
+#### 命令用法
+
+
+
+
+**lvremove LV_PATH**
+
+
+
+
+    
+    [root@edu ~]# lvremove /dev/tvg/tlv 
+    Do you really want to remove active logical volume tvg/tlv? [y/n]: y
+      Logical volume "tlv" successfully removed
+    [root@edu ~]# lvs
+      LV   VG   Attr       LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+      mylv myvg -wi-ao---- 3.00g
+
+
+
+
+##  
+
+
+
+
+## 实例演示
+
+
+
+
+### 拓展逻辑卷
+
+
+
+
+<blockquote>
+
+> 
+> 下面的操作中需要注意的是，CentOS7中的lvm2工具创建的LV位于/dev/下，叫做dm-#，#为数字。同时，还会在/dev/mapper/下创建名为VGNAME-LVNAME的符号链接指向/dev/dm#。VGNAME为卷组名，LVNAME为逻辑卷名。而且除了这个符号链接之外，还有一个符号链接也指向这个逻辑卷，该符号链接路径的命名规则为: /dev/VGNAME/LVNAME。
+> 
+> 
+</blockquote>
+
+
+
+    
+    [root@edu ~]# lvcreate -L 5G -n tlv tvg #首先创建一个逻辑卷
+      Logical volume "tlv" created.
+    [root@edu ~]# mke2fs -t ext4 /dev/tvg/tlv #然后将该逻辑卷格式化为ext4文件系统
+    mke2fs 1.42.9 (28-Dec-2013)
+    Filesystem label=
+    OS type: Linux
+    Block size=4096 (log=2)
+    Fragment size=4096 (log=2)
+    Stride=0 blocks, Stripe width=0 blocks
+    327680 inodes, 1310720 blocks
+    65536 blocks (5.00%) reserved for the super user
+    First data block=0
+    Maximum filesystem blocks=1342177280
+    40 block groups
+    32768 blocks per group, 32768 fragments per group
+    8192 inodes per group
+    Superblock backups stored on blocks: 
+    	32768, 98304, 163840, 229376, 294912, 819200, 884736
+    
+    Allocating group tables: done                            
+    Writing inode tables: done                            
+    Creating journal (32768 blocks): done
+    Writing superblocks and filesystem accounting information: done 
+    
+    [root@edu ~]# mount /dev/tvg/tlv /mnt #将该逻辑卷挂载☞/mnt目录下
+    [root@edu ~]# ls /mnt #一般在ext系列文件系统中，刚格式化后的分区会有lost+found文件夹，一般看到这个文件夹就知道这个分区格式化和挂载都成功了。
+    lost+found
+    [root@edu ~]# df -h /mnt #通过df命令查看/mnt所在的分区的文件系统空间使用情况，可以发现和5G有偏差，只要误差在10%以内就可以接受。
+    Filesystem           Size  Used Avail Use% Mounted on
+    /dev/mapper/tvg-tlv  4.8G   20M  4.6G   1% /mnt
+    [root@edu ~]# lvextend -L +3G /dev/tvg/tlv #开始拓展逻辑卷，在5G的基础上增加3G，目标应该是8G。
+      Size of logical volume tvg/tlv changed from 5.00 GiB (1280 extents) to 8.00 GiB (2048 extents).
+      Logical volume tvg/tlv successfully resized.
+    [root@edu ~]# df -h /mnt #拓展成功后查看文件系统空间使用情况，发现没有发生变化。因为只拓展了逻辑卷的空间。
+    Filesystem           Size  Used Avail Use% Mounted on
+    /dev/mapper/tvg-tlv  4.8G   20M  4.6G   1% /mnt
+    [root@edu ~]# lvs #果然，逻辑卷的空间已经拓展了。
+      LV   VG   Attr       LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+      mylv myvg -wi-ao---- 3.00g                                                    
+      tlv  tvg  -wi-ao---- 8.00g                                                    
+    [root@edu ~]# resize2fs /dev/tvg/tlv 8G #使用resize2fs命令拓展ext系列文件系统的文件系统空间至8G。
+    resize2fs 1.42.9 (28-Dec-2013)
+    Filesystem at /dev/tvg/tlv is mounted on /mnt; on-line resizing required
+    old_desc_blocks = 1, new_desc_blocks = 1
+    The filesystem on /dev/tvg/tlv is now 2097152 blocks long.
+    
+    [root@edu ~]# df -h /mnt #拓展成功后查看文件系统空间使用情况，发现文件系统空间也到了8G左右。
+    Filesystem           Size  Used Avail Use% Mounted on
+    /dev/mapper/tvg-tlv  7.8G   23M  7.4G   1% /mnt
+    [root@edu ~]# lvs
+      LV   VG   Attr       LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+      mylv myvg -wi-ao---- 3.00g                                                    
+      tlv  tvg  -wi-ao---- 8.00g
+
+
+
+
+###  
+
+
+
+
+### 缩减逻辑卷
+
+
+
+
+<blockquote>
+
+> 
+> 下面的操作中需要注意的是，如果文件系统上已经有数据，然后你强行缩减逻辑卷的空间而且没有先缩减文件系统的空间，显然会造成文件系统的损坏，所以在缩减逻辑卷空间之前一定要缩减文件系统空间。而且缩减逻辑卷的操作有很大的风险，无法保证正确操作后一定不会出现数据损坏。
+> 
+> 
+</blockquote>
+
+
+
+    
+    [root@edu dev]# umount /mnt #首先将已挂载的设备卸载
+    [root@edu dev]# e2fsck -f /dev/tvg/tlv #然后强制检查文件系统的健康状况，此项为必须，在resize2fs之前如果不执行文件系统强制检查，就无法进行文件系统空间的缩减。（针对ext系列文件系统）
+    e2fsck 1.42.9 (28-Dec-2013)
+    Pass 1: Checking inodes, blocks, and sizes
+    Pass 2: Checking directory structure
+    Pass 3: Checking directory connectivity
+    Pass 4: Checking reference counts
+    Pass 5: Checking group summary information
+    /dev/tvg/tlv: 11/524288 files (0.0% non-contiguous), 71439/2097152 blocks
+    [root@edu dev]# resize2fs /dev/tvg/tlv 4G #使用resize2fs命令缩减文件系统空间至4G。
+    resize2fs 1.42.9 (28-Dec-2013)
+    Resizing the filesystem on /dev/tvg/tlv to 1048576 (4k) blocks.
+    The filesystem on /dev/tvg/tlv is now 1048576 blocks long.
+    
+    [root@edu dev]# lvreduce -L 4G /dev/tvg/tlv #使用lvreduce命令缩减逻辑卷空间至4G。
+      WARNING: Reducing active logical volume to 4.00 GiB.
+      THIS MAY DESTROY YOUR DATA (filesystem etc.)
+    Do you really want to reduce tvg/tlv? [y/n]: y
+      Size of logical volume tvg/tlv changed from 8.00 GiB (2048 extents) to 4.00 GiB (1024 extents).
+      Logical volume tvg/tlv successfully resized.
+    [root@edu dev]# mount /dev/tvg/tlv /mnt #重新挂载逻辑卷。
+    [root@edu dev]# ls /mnt #发现文件系统大致能够正常工作。
+    lost+found
+    [root@edu dev]# df -h /mnt #文件系统空间也减小了。
+    Filesystem           Size  Used Avail Use% Mounted on
+    /dev/mapper/tvg-tlv  3.9G   20M  3.6G   1% /mnt
+    [root@edu dev]# lvs #逻辑卷的空间也减小了。
+      LV   VG   Attr       LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+      mylv myvg -wi-ao---- 3.00g                                                    
+      tlv  tvg  -wi-ao---- 4.00g
+
+
+
+
+###  
+
+
+
+
+### 使用LVM的快照功能
+
+
+
+
+快照是LVM提供的除了可变的空间以外另一个好用的功能。快照能够记录一个逻辑卷在任何一个时刻的情况，记录下来后，在未来使用这个快照就能将这个逻辑卷恢复到过去的一个拍摄了快照的时间点。就类似照片一样，能够保留任何一个时刻的照片范围内的情况，但是不同的是，我们无法通过照片回到过去。
+
+
+
+
+
+#### 快照的实现机制
+
+
+
+
+快照的创建非常快，从某种意义上来说，创建一个快照其实就是创建一个对逻辑卷上的保存的元数据的监视器。我们知道，只要数据发生修改，那么元数据一定会发生变化，而元数据的变化却不一定会引起数据的改变。所以监控元数据的变化是最靠谱的。快照和普通的逻辑卷一样，也需要存储空间，而且快照必须和被监控的哪个逻辑卷处于同一个卷组中，因为逻辑卷是无法跨卷组相互访问的。快照的存储空间并不需要和被监控的逻辑卷一样大，因为快照的空间并不是不变的，而是随着逻辑卷上文件的变化而逐渐增大的，最后可能会增大到比原始的逻辑卷空间还要大。
+
+
+
+
+那么快照到底是怎么实现保存原始数据而且不占用太大的空间的呢？我们来看一张图：
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/05/snapshot-1.jpg)
+
+
+
+
+在这张图中，有三个文件系统，分别是/、/opt和/mnt,我们假设挂载在/opt上的是一个逻辑卷，且该目录下有一个文件passwd，那么passwd文件的访问路径应该是/opt/passwd（这里不考虑硬链接）。如果此时，我们对该逻辑卷拍摄了快照，并且将其挂载到了/mnt目录下，那么快照就会新开辟出一个访问路径，也就是说可以从/mnt目录下直接访问到/opt目录下的文件，即快照为passwd文件开辟了一个新的访问路径/mnt/passwd，所以我们通过/opt或者是/mnt访问看到的其实是同一个文件，只是快照为逻辑卷上的文件系统开辟了一条新的访问路径。
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/05/snapshot-2.jpg)
+
+
+
+
+在拍摄完快照后，一旦元数据监视器检测到逻辑卷上的文件将要发生改变，就会将要改变的文件复制一份到快照卷中，以后每次对该文件的访问就不再通过逻辑卷来访问，而是通过快照卷来访问了。所以，无论如何对逻辑卷做修改，通过快照卷访问到的永远是拍摄快照那一刻的逻辑卷。而我们也发现了，快照卷在最初其实是几乎不占用空间的，而随着逻辑卷上的文件不停地发生修改，快照卷会越来越大，直至逻辑卷的大小。
+
+
+
+
+
+####  
+
+
+
+
+#### 快照的使用实例
+
+
+
+    
+    [root@edu /]# mount /dev/tvg/tlv /mnt #首先将逻辑卷挂载至/mnt目录下
+    [root@edu /]# cd /mnt #进入/mnt目录
+    [root@edu mnt]# ls #检查是否成功挂载，发现目录中只有lost+found，
+    lost+found
+    [root@edu mnt]# cp -a /etc/pam.d/ .  #将/etc/pam.d/目录完整复制到/mnt目录下
+    [root@edu mnt]# ls -l  #检查是否复制成功
+    total 20
+    drwx------. 2 root root 16384 May 9 13:33 lost+found
+    drwxr-xr-x. 2 root root 4096 Apr 19 18:51 pam.d
+    [root@edu mnt]# du -sh pam.d/ #计算pam.d目录包含的文件大小，104K
+    104K pam.d/
+    [root@edu mnt]# ls -l pam.d/ | wc -l  #计算pam.d目录中的文件数量 32
+    32
+    [root@edu mnt]# lvcreate -L 4G -p r -s -n snap_tlv /dev/tvg/tlv   #为/dev/tvg/tlv逻辑卷创建快照卷snap_tlv，大小为4G，只读。
+     Using default stripesize 64.00 KiB.
+     Logical volume "snap_tlv" created.
+    [root@edu mnt]# lvs #观察到了快照卷
+     LV VG Attr LSize Pool Origin Data% Meta% Move Log Cpy%Sync Convert
+     mylv myvg -wi-ao---- 3.00g 
+     snap_tlv tvg sri-a-s--- 4.00g tlv 0.00 
+     tlv tvg owi-aos--- 4.00g 
+    [root@edu mnt]# mount -r /dev/tvg/snap_tlv /opt/  #将快照卷以只读方式挂载至/opt目录下
+    [root@edu mnt]# ls -l /opt/ #观察/opt目录的内容，发现也有pam.d目录
+    total 20
+    drwx------. 2 root root 16384 May 9 13:33 lost+found
+    drwxr-xr-x. 2 root root 4096 Apr 19 18:51 pam.d
+    [root@edu mnt]# du -sh /opt/pam.d/  #计算pam.d目录包含的文件大小,果然也是104K
+    104K /opt/pam.d/
+    [root@edu mnt]# ls -l /opt/pam.d/ | wc -l #计算pam.d目录中的文件数量 ，同样的也是32
+    32
+    [root@edu mnt]# pwd 现在处于/mnt目录下，即为逻辑卷中
+    /mnt
+    [root@edu mnt]# cd pam.d/ #进入pam.d目录
+    [root@edu pam.d]# touch edmund #在pam.d目录下创建一个文件edmund
+    [root@edu pam.d]# echo edmund.newline > edmund #将字符串edmund.newline输出到这个文件中
+    [root@edu pam.d]# cat edmund  #打印这个文件的内容，发现edmund文件已经有内容了
+    edmund.newline
+    [root@edu pam.d]# cat login   #打印pam.d目录下login文件的内容
+    #%PAM-1.0
+    auth [user_unknown=ignore success=ok ignore=ignore default=bad] pam_securetty.so
+    auth substack system-auth
+    auth include postlogin
+    account required pam_nologin.so
+    account include system-auth
+    password include system-auth
+    # pam_selinux.so close should be the first session rule
+    session required pam_selinux.so close
+    session required pam_loginuid.so
+    session optional pam_console.so
+    # pam_selinux.so open should only be followed by sessions to be executed in the user context
+    session required pam_selinux.so open
+    session required pam_namespace.so
+    session optional pam_keyinit.so force revoke
+    session include system-auth
+    session include postlogin
+    -session optional pam_ck_connector.so
+    [root@edu pam.d]# echo edmund.newline >> login  #在login文件的末尾追加一句字符串 edmund.newline
+    [root@edu pam.d]# cat login #再次查看login文件，发现追加成功
+    #%PAM-1.0
+    auth [user_unknown=ignore success=ok ignore=ignore default=bad] pam_securetty.so
+    auth substack system-auth
+    auth include postlogin
+    account required pam_nologin.so
+    account include system-auth
+    password include system-auth
+    # pam_selinux.so close should be the first session rule
+    session required pam_selinux.so close
+    session required pam_loginuid.so
+    session optional pam_console.so
+    # pam_selinux.so open should only be followed by sessions to be executed in the user context
+    session required pam_selinux.so open
+    session required pam_namespace.so
+    session optional pam_keyinit.so force revoke
+    session include system-auth
+    session include postlogin
+    -session optional pam_ck_connector.so
+    edmund.newline
+    [root@edu pam.d]# du -sh /mnt/pam.d/ #再次计算pam.d目录包含的文件大小，已经是108K了
+    108K /mnt/pam.d/
+    [root@edu pam.d]# ls -l /mnt/pam.d/ | wc -l #再次计算pam.d目录中的文件数量，增加到了33
+    33
+    [root@edu pam.d]# cd /opt/pam.d/ #进入/opt目录下的pam.d目录，即快照卷中的pam.d目录
+    [root@edu pam.d]# pwd #当前确实处于快照卷中
+    /opt/pam.d
+    [root@edu pam.d]# cat edmund #打印edmund文件的内容，发现并没有这个文件。因为快照卷只会保留修改过的文件，而不会复制新创建的文件
+    cat: edmund: No such file or directory
+    [root@edu pam.d]# cat login #观察login文件的内容，发现文件末尾没有之前新追加的行。因为快照卷已经保留了login文件的副本
+    #%PAM-1.0
+    auth [user_unknown=ignore success=ok ignore=ignore default=bad] pam_securetty.so
+    auth substack system-auth
+    auth include postlogin
+    account required pam_nologin.so
+    account include system-auth
+    password include system-auth
+    # pam_selinux.so close should be the first session rule
+    session required pam_selinux.so close
+    session required pam_loginuid.so
+    session optional pam_console.so
+    # pam_selinux.so open should only be followed by sessions to be executed in the user context
+    session required pam_selinux.so open
+    session required pam_namespace.so
+    session optional pam_keyinit.so force revoke
+    session include system-auth
+    session include postlogin
+    -session optional pam_ck_connector.so
+    [root@edu pam.d]# du -sh /opt/pam.d/ #再次计算/opt/pam.d目录的大小，仍然是104K
+    104K /opt/pam.d/
+    [root@edu pam.d]# ls -l /opt/pam.d/ | wc -l #再次计算/opt/pam.d目录的文件数量，仍然是32
+    32
+    
+
+
+
+
+ 

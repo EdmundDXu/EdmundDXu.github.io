@@ -1,0 +1,190 @@
+---
+author: edmund
+comments: true
+date: 2018-05-09 08:50:49+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/05/09/%e5%a5%bd%e7%94%a8%e7%9a%84%e5%b0%8f%e5%b7%a5%e5%85%b7%e4%b9%8bdd%e5%91%bd%e4%bb%a4/
+slug: '%e5%a5%bd%e7%94%a8%e7%9a%84%e5%b0%8f%e5%b7%a5%e5%85%b7%e4%b9%8bdd%e5%91%bd%e4%bb%a4'
+title: 好用的小工具之dd命令
+wordpress_id: 295
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- linux
+- 命令
+---
+
+# dd命令
+
+
+
+
+复制命令想必大家都很熟悉，不就是cp吗，但是虽然你天天在用cp命令，但是你有想过吗，你能不能用cp命令复制整个文件系统，甚至是整个磁盘上的所有分区，答案当然是不行的，cp命令只是文件系统级别的复制，而文件系统和分区则是数据块级别的东西，所以使用cp是做不到的。这里就有一个很强的工具，叫做dd，它能够实现块级别的复制操作，而且根据选项的不同，可以实现只复制给定的字节数，而不是完全复制下来。
+
+
+
+
+**NAME**
+
+
+
+
+dd - convert and copy a file
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+Copy a file, converting and formatting according to the operands.
+
+
+
+
+dd命令，用来进行块级别的转换和复制文件。
+
+
+
+
+## 基本用法
+
+
+
+
+**dd if=INPUT FILE of=OUTPUT FILE bs=BLOCK SIZE count=BS COUNT**
+
+
+
+
+**INPUT FILE**: dd命令的输入文件，可以是普通文件，也可以是设备文件，只要能够提供输入即可。
+
+
+
+
+**OUTPUT FILE**: dd命令的输出文件，指明输出到什么文件上，文件如果不存在则会创建。
+
+
+
+
+**BLOCK SIZE**：dd命令每次复制的块大小，表示每一次操作复制多少字节。
+
+
+
+
+**BS COUNT**：dd命令的复制次数，表示复制指定块大小多少次。
+
+
+
+
+ 
+
+
+
+
+## 使用dd复制文件
+
+
+
+    
+    [root@edu ~]# dd if=/etc/fstab of=/tmp/fstab 
+    1+1 records in
+    1+1 records out
+    724 bytes (724 B) copied, 0.000531031 s, 1.4 MB/s
+    [root@edu ~]# cat /tmp/fstab
+    
+    #
+    # /etc/fstab
+    # Created by anaconda on Thu Apr 19 18:45:35 2018
+    #
+    # Accessible filesystems, by reference, are maintained under '/dev/disk'
+    # See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+    #
+    UUID=c340f1a3-e07e-40e8-8ecc-29ebd0480fe0 /                       btrfs   subvol=root     0 0
+    UUID=616bbfe3-4356-4c91-a0a9-86c83fc097de /boot                   xfs     defaults        0 0
+    UUID=c340f1a3-e07e-40e8-8ecc-29ebd0480fe0 /home                   btrfs   subvol=home     0 0
+    UUID=f0b1e78c-38fb-4036-afcb-9857b31498fd swap                    swap    defaults        0 0
+    /dev/sr0				/media			iso9660	  defaults,ro	  0 0	 
+    UUID=5cd9877f-6bf2-41a3-b74e-313cb3e038a9 /users				  ext4	  defaults   0 0
+
+
+
+
+ 
+
+
+
+
+## 使用dd复制文件的一部分
+
+
+
+    
+    [root@edu ~]# dd if=/etc/fstab of=/tmp/fstab bs=1 count=100
+    100+0 records in
+    100+0 records out
+    100 bytes (100 B) copied, 0.00120442 s, 83.0 kB/s
+    [root@edu ~]# cat /tmp/fstab
+    
+    #
+    # /etc/fstab
+    # Created by anaconda on Thu Apr 19 18:45:35 2018
+    #
+    # Accessible filesystems, by ref[root@edu ~]#
+
+
+
+
+ 
+
+
+
+
+## 使用dd创建一个5MB大小的文件
+
+
+
+    
+    [root@edu ~]# dd if=/dev/zero of=/tmp/dd.file bs=1M count=5
+    5+0 records in
+    5+0 records out
+    5242880 bytes (5.2 MB) copied, 0.00843553 s, 622 MB/s
+    [root@edu ~]# du -sh /tmp/dd.file 
+    5.0M	/tmp/dd.file
+    
+
+
+
+
+ 
+
+
+
+
+## 使用dd备份磁盘的MBR
+
+
+
+    
+    [root@edu ~]# dd if=/dev/sda of=/tmp/mbr.bak bs=1 count=512
+    512+0 records in
+    512+0 records out
+    512 bytes (512 B) copied, 0.00318812 s, 161 kB/s
+    
+
+
+
+
+ 
+
+
+
+
+上述操作需要注意的是，/dev/zero是linux系统中的吐零机，你要多少0，/dev/zero这个设备文件就能给你多少0。而/dev/null是位桶(bit bucket),你无论往这个设备输出多少数据，它都能把数据吃干净，就像是数据进入了黑洞一般。
+
+
+

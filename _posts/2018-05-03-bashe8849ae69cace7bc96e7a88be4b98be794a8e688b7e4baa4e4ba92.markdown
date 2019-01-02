@@ -1,0 +1,110 @@
+---
+author: edmund
+comments: true
+date: 2018-05-03 12:25:28+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/05/03/bash%e8%84%9a%e6%9c%ac%e7%bc%96%e7%a8%8b%e4%b9%8b%e7%94%a8%e6%88%b7%e4%ba%a4%e4%ba%92/
+slug: bash%e8%84%9a%e6%9c%ac%e7%bc%96%e7%a8%8b%e4%b9%8b%e7%94%a8%e6%88%b7%e4%ba%a4%e4%ba%92
+title: bash脚本编程之用户交互
+wordpress_id: 232
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- bash
+- linux
+- 命令
+- 脚本编程
+---
+
+在大部分应用程序中，都会需要用户键入一些信息使得程序能够完整执行下去，而bash脚本也不例外，bash脚本也会需要与用户进行交互操作，以得到预期的数据，让脚本能够继续执行下去。
+
+在bash中为用户输入提供了一个内置的命令read，这个命令可以很方便地读取用户输入，然后将用户输入保存到一个或多个变量中，以供脚本使用。
+
+
+# read命令
+
+
+
+
+## NAME
+
+
+
+
+read
+
+
+
+
+
+## DESCRIPTION
+
+
+
+
+Read a line from the standard input and split it into fields.
+
+
+
+
+read命令最简单的使用方法就是**read VARIABLES**，该命令会捕获命令提示符，然后等待用户输入字符串，当用户输入完字符串后敲击回车，用户输入的内容就会被保存至以VARIABLES命名的变量中。
+
+
+
+
+    
+    [root@edu scripts]# read VAR
+    edmund [此处为输入]
+    [root@edu scripts]# echo ${VAR}
+    edmund
+    
+
+
+
+
+### 
+
+
+
+
+### 常用选项
+
+
+
+
+**-p prompt** 等待用户输入时打印的提示信息
+
+
+
+
+**-t timeout** 等待用户输入的超时时间，如果超时，将释放命令提示符，并且该变量不会被赋值
+
+
+
+
+**-a array** 将用户输入的信息以空白字符为分隔赋值给数组，数组下标从0开始
+
+
+
+
+**-d delim** 读取到delim时就结束读取，而不是读取到换行符时结束读取
+
+
+
+
+
+### 范例
+
+
+
+    
+    [root@edu scripts]# read -p "Right Here Waiting：" -a str
+    Right Here Waiting：i will be there waiting for you
+    [root@edu scripts]# echo ${str[0]}
+    i
+    [root@edu scripts]# echo ${str[1]}
+    will
+    [root@edu scripts]# echo ${str[6]}
+    you

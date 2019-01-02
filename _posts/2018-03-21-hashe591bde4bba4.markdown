@@ -1,0 +1,140 @@
+---
+author: edmund
+comments: true
+date: 2018-03-21 00:27:16+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/03/21/hash%e5%91%bd%e4%bb%a4/
+slug: hash%e5%91%bd%e4%bb%a4
+title: hash命令
+wordpress_id: 48
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- bash
+- 命令
+---
+
+# hash命令
+
+
+
+
+在说hash之前必须要提到PATH环境变量，这个变量可以通过以下命令在Linux中查看:
+
+
+
+
+[root@node1 ~]# echo $PATH  
+
+/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/bin
+
+
+
+
+当你在shell下键入命令的时候，shell会在记录在PATH环境变量下的路径中查找和这个命令同名的程序，从左向右找，一旦找到就会执行。你可以通过以下命令查看命令位于什么路径下,用法 which COMMAND
+
+
+
+
+[root@node1 ~]# which cat  
+
+/usr/bin/cat
+
+
+
+
+而如果你的主机中的命令相当多，每次执行命令，shell都会花费很多时间去查找命令的位置，导致系统运行效率低下，所以，在bash中，命令每次执行，都会将其的命令名的散列值和命令的路径作为键值对保存在缓存中，然后当下次调用已经存在缓存中的命令时，则不在查找PATH环境变量中的路径，而是直接从缓存中取出路径直接执行，可以通过hash命令查看缓存:
+
+
+
+
+[root@node1 ~]# hash  
+
+hits command  
+
+1 /usr/sbin/service  
+
+1 /usr/bin/jps  
+
+1 /usr/sbin/setenforce
+
+
+
+
+第一列为缓存命中次数，第二列为命令的路径。
+
+
+
+
+# hash常用选项
+
+
+
+
+可以通过help hash 查看具体选项。
+
+
+
+
+**hash -p pathname NAME**
+
+
+
+
+
+
+
+手动添加NAME命令到缓存，pathname为NAME命令所在的绝对路径,如：
+
+
+
+
+**hash -p /usr/bin/cat cat**
+
+
+
+
+ 
+
+
+
+
+删除指定的缓存条目
+
+
+
+
+**hash -d [name ...]**
+
+
+
+
+
+
+
+删除所有的缓存条目
+
+
+
+
+**hash -r**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

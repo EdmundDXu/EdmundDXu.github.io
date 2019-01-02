@@ -1,0 +1,756 @@
+---
+author: edmund
+comments: true
+date: 2018-06-06 00:27:43+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/06/06/linux%e7%bd%91%e7%bb%9c%e7%ae%a1%e7%90%86%e4%b9%8bip%e7%b3%bb%e5%88%97%e5%91%bd%e4%bb%a4/
+slug: linux%e7%bd%91%e7%bb%9c%e7%ae%a1%e7%90%86%e4%b9%8bip%e7%b3%bb%e5%88%97%e5%91%bd%e4%bb%a4
+title: Linux网络管理之ip系列命令
+wordpress_id: 352
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- CentOS7
+- linux
+- 命令
+- 网络
+---
+
+# Linux网络配置
+
+
+
+
+关于网络基础知识这里就不讲了，这篇博文假设读者已经具备了基础的网络知识。
+
+
+
+
+在Linux系统中，有很多配置网络环境的方法，而这里除开图形化界面的配置外，一般分为静态配置和动态配置。
+
+
+
+
+## 静态配置
+
+
+
+
+(1) 通过ifcfg套件完成配置，可以实现立即生效，但是重启网卡后配置将丢失。
+
+
+
+
+(2) 通过ip套件完成配置，实现立即生效，但是重启网卡后配置将丢失。
+
+
+
+
+(3) 通过接口的配置文件完成配置，需要重启网卡后才能生效，但是永久有效。
+
+
+
+
+## 动态配置
+
+
+
+
+通过DHCP服务器动态配置。
+
+
+
+
+
+
+
+这里要讲的是通过ip套件进行网络的静态配置。
+
+
+
+
+
+
+
+# ip套件
+
+
+
+
+在ifconfig等一系列网络配置命令出现了十几年后，它们势必会有很多功能上的缺陷或者设计上的缺陷，导致无法满足当今的网络环境，在这种情况下，ip命令以及ip命令相关的一些套件就站在巨人的肩膀上出现了。ip套件是由iproute2这个软件包提供的，而且这和软件包中除了ip套件外还有其他很强大的工具，这篇博文中就不对其展开讲述了。ip套件的出现弥补了ifcfg套件的很多缺陷，并且增强了ifcfg套件的很多优势，而且由于语法统一，功能强大，想必是将来网络配置的首选工具。ip套件中包含了 : ip命令（网络配置）、ss命令（套接字情况查看）。
+
+
+
+
+
+
+
+## ip命令
+
+
+
+
+ip命令旨在替代ifconfig命令，所以它包含了许许多多的子命令，提供了非常强大且丰富的功能，包括显示/操作路由表、接口设备、策略路由和隧道等等。每一个ip的子命令都提供了一个网络管理功能，每个子命令都有一些操作命令和选项用于配置相应的网络参数。
+
+
+
+
+我们在日常使用中最常用的子命令就是 link、addr和route子命令。
+
+
+
+
+ip命令常用选项（**注意，ip命令的选项需要处于ip命令之后，ip命令的子命令之前**）
+
+
+
+
+**-h, -human, -human-readable** : 以易读的方式显示输出信息。
+
+
+
+
+**-s, -stats, -statistics** : 输出更多的信息，可以指定多次该选项，比如: -ss，输出的信息会更多。
+
+
+
+
+**-d, -details** : 输出更多的详细信息。
+
+
+
+
+ 
+
+
+
+
+### ip link（用于管理网络接口设备）
+
+
+
+
+link子命令是用于显示和操作网络接口设备的，它可以查看网络设备的状态信息，启用或者禁用某个网络设备接口或者是修改某个网络设备接口的MTU、MAC等信息，此外，它还能够添加或者删除网络接口设备，比如VLAN、Bridge等，不过在此处介绍这些就大大超出命令的范畴了，所以请读者自行去了解。需要查阅命令的详细信息可以通过 ip link help或者man ip link命令。
+
+
+
+
+**ip link set DEVICE COMMAND**
+
+
+
+
+ip link set用于设置网络设备的属性，DEVICE用于指定设备，COMMAND为需要修改的属性，常用COMMAND如下：
+
+
+
+
+{ up | down } : 启动或者停止该设备
+
+
+
+
+arp { on | off } : 是否开启接口的arp解析
+
+
+
+
+mtu MTU : 设置接口传输的MTU大小
+
+
+
+
+ 
+
+
+
+
+**ip link show [ DEVICE ] [ up ]**
+
+
+
+
+ip link show 命令用于显示网络设备的属性，DEVICE用于显示某个指定设备，默认为显示所有设备，up用于显示处于启动状态的接口。
+
+
+
+    
+    [root@edu ~]# ip link show
+    1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT qlen 1
+        link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DEFAULT qlen 1000
+        link/ether 00:0c:29:dd:b3:ae brd ff:ff:ff:ff:ff:ff
+    [root@edu ~]# ip -s link show
+    1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT qlen 1
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    RX: bytes packets errors dropped overrun mcast 
+    0 0 0 0 0 0 
+    TX: bytes packets errors dropped carrier collsns 
+    0 0 0 0 0 0 
+    2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP mode DEFAULT qlen 1000
+    link/ether 00:0c:29:dd:b3:ae brd ff:ff:ff:ff:ff:ff
+    RX: bytes packets errors dropped overrun mcast 
+    117390981 109072 0 0 0 0 
+    TX: bytes packets errors dropped carrier collsns 
+    1747523 2879 0 0 0 0 
+
+
+
+
+ 
+
+
+
+
+
+
+
+### ip addr（用于管理网络接口设备的协议地址）
+
+
+
+
+addr子命令用于管理某个网络接口设备与协议(ipv4或ipv6)相关的地址。有些类似于ip link命令，但是比ip link命令多了协议地址管理相关的操作，少了一些link中的细节操作。addr子命令可以显示协议地址和协议地址相关的属性，可以添加和删除协议地址。需要查阅命令的详细信息可以通过 ip addr help或者man ip address命令。
+
+
+
+
+
+
+
+**ip {address|addr} add IFADDR dev IFNAME COMMAND**
+
+
+
+
+ip addr add命令用于为设备添加新的协议地址，IFADDR用于指定协议地址，可以使用CIDR表示法同时给定子网掩码（subnet mask）。IFNAME用于指定需要添加地址的设备接口。
+
+
+
+
+COMMAND用于指定协议地址的相关属性，常用COMMAND如下所示 : 
+
+
+
+
+broadcast ADDRESS : 指定接口的广播地址。
+
+
+
+
+label LABEL : 指定某个接口地址的标签。
+
+
+
+
+scope SCOPE_VALUE : 指定接口地址的生效范围,ipv4协议的可用生效范围为: global、link和host。其中global表示这个接口地址全局有效，所以无论数据包从哪个接口地址（网卡）进入该主机，数据包都能够到达这个接口地址。link表示这个接口地址只在这个接口有效，所以如果数据包从其他接口地址进入主机，将无法找到这个link范围的接口地址。host表示这个接口地址只在本机有效，无论数据包从哪个接口进入该主机，host范围的接口均不会对数据包做出响应，该接口只会响应本机内部的数据包。
+
+
+
+    
+    [root@edu ~]# ip addr add 10.60.72.188/24 dev ens33
+    [root@edu ~]# ip addr show
+    1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+        link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+        inet 127.0.0.1/8 scope host lo
+           valid_lft forever preferred_lft forever
+        inet6 ::1/128 scope host 
+           valid_lft forever preferred_lft forever
+    2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+        link/ether 00:0c:29:dd:b3:ae brd ff:ff:ff:ff:ff:ff
+        inet 10.60.72.190/24 brd 10.60.72.255 scope global ens33
+           valid_lft forever preferred_lft forever
+        inet 10.60.72.188/24 scope global secondary ens33  #可以看到ens33接口多出了一个新的协议地址10.60.72.188
+           valid_lft forever preferred_lft forever
+        inet6 fe80::ae75:db2b:9e42:c9ed/64 scope link 
+           valid_lft forever preferred_lft forever
+    
+
+
+
+
+ 
+
+
+
+
+**ip { address |addr } del IFADDR dev IFNAME **
+
+
+
+
+ip addr del命令用于删除指定的设备地址，其用法与ip addr add命令基本一致。设备名是必选参数，其他参数均为可选参数，如果不指定设备地址，则默认删除设备的第一个设备地址。
+
+
+
+    
+    [root@edu ~]# ip addr del 10.60.72.188/24 dev ens33
+    [root@edu ~]# ip addr show
+    1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+        link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+        inet 127.0.0.1/8 scope host lo
+           valid_lft forever preferred_lft forever
+        inet6 ::1/128 scope host 
+           valid_lft forever preferred_lft forever
+    2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+        link/ether 00:0c:29:dd:b3:ae brd ff:ff:ff:ff:ff:ff
+        inet 10.60.72.190/24 brd 10.60.72.255 scope global ens33
+           valid_lft forever preferred_lft forever
+        inet6 fe80::ae75:db2b:9e42:c9ed/64 scope link 
+           valid_lft forever preferred_lft forever
+    
+
+
+
+
+ 
+
+
+
+
+**ip { address|addr } show [ dev IFNAME ] COMMAND**
+
+
+
+
+ip addr show 命令用于显示设备地址，默认显示所有设备的所有地址，且show可以省略。IFNAME指定设备名称，表示只显示指定设备的设备地址。常用COMMAND如下所示:
+
+
+
+
+scope SCOPE-NAME : SCOPE-NAME用于指定范围名称，表示只显示指定scope的协议地址。
+
+
+
+
+label PATTERN: PATTERN用于指定标签的模式，表示只显示匹配给定模式的标签所属的协议地址。一般使用shell风格的模式。
+
+
+
+
+up : 表示只显示处于启动状态的设备。
+
+
+
+    
+    [root@edu ~]# ip addr show scope global 
+    2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+        link/ether 00:0c:29:dd:b3:ae brd ff:ff:ff:ff:ff:ff
+        inet 10.60.72.190/24 brd 10.60.72.255 scope global ens33
+           valid_lft forever preferred_lft forever
+    [root@edu ~]# ip addr show up
+    1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+        link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+        inet 127.0.0.1/8 scope host lo
+           valid_lft forever preferred_lft forever
+        inet6 ::1/128 scope host 
+           valid_lft forever preferred_lft forever
+    2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+        link/ether 00:0c:29:dd:b3:ae brd ff:ff:ff:ff:ff:ff
+        inet 10.60.72.190/24 brd 10.60.72.255 scope global ens33
+           valid_lft forever preferred_lft forever
+        inet6 fe80::ae75:db2b:9e42:c9ed/64 scope link 
+           valid_lft forever preferred_lft forever
+
+
+
+
+ 
+
+
+
+
+ 
+
+
+
+
+**ip { address|addr } flush [ dev IFNAME ] COMMAND**
+
+
+
+
+ip addr flush用于按照某个指定的标准删除设备地址，该命令用法和参数与ip addr show命令基本一致，不过该命令没有接收到参数是不会运行的。该命令与ip addr del的区别就是可以一次删除批量的地址，而ip addr del只能删除一个。
+
+
+
+
+ 
+
+
+
+
+### ip route（用于管理路由）
+
+
+
+
+route子命令用于管理内核路由表中的路由条目。可以查看、添加、删除、修改不同属性的路由条目。这里只讲最基本的路由条目，详细的路由条目请读者自行查阅资料。需要查阅命令的详细信息可以通过ip route help或者man ip route命令。
+
+
+
+
+
+
+
+**ip route add DEST via ADDRESS COMMAND**
+
+
+
+
+ip route add命令用于添加一条路由条目，DEST用于指定该路由条目的目标地址，可以是主机地址，也可以是网络地址。ADDRESS用于指定路由经由的设备地址，即数据包的出口地址。
+
+
+
+
+常用COMMAND如下所示:
+
+
+
+
+**metric NUMBER** : 指定路由权值，又称路由度量。当一个地址匹配了多个路由条目时，路由会选择最低权值的路由条目。
+
+
+
+
+**dev NAME** : 指定路由经由的出口设备，可以不指定，默认会根据设备地址确定出口设备。
+
+
+
+
+**src ADDRESS** : 指定数据包从出口设备被送出前选择的设备地址（因为一个设备可能有多个设备地址，此处可以指定从设备的哪个设备地址送出数据报文）
+
+
+
+
+**mtu MTU** : 指定MTU的大小。
+
+
+
+
+**window NUMBER** : 指定TCP滑动窗口的大小。
+
+
+
+    
+    [root@edu ~]# ip route add 192.168.199.0/24 via 10.60.72.1 dev ens33
+    [root@edu ~]# ip route show
+    default via 10.60.72.1 dev ens33 proto static metric 100 
+    10.60.72.0/24 dev ens33 proto kernel scope link src 10.60.72.190 metric 100 
+    192.168.199.0/24 via 10.60.72.1 dev ens33 
+    [root@edu ~]# ip route add default via 10.60.72.1  # 和route命令一样,ip route也可以使用default来添加默认路由,注意此处没有指定dev,ip route命令会根据出口地址10.60.72.1来选择出口设备。
+    [root@edu ~]# ip route 
+    default via 10.60.72.1 dev ens33 
+    default via 10.60.72.1 dev ens33 proto static metric 100 
+    10.60.72.0/24 dev ens33 proto kernel scope link src 10.60.72.190 metric 100 
+    192.168.199.0/24 via 10.60.72.1 dev ens33
+
+
+
+
+ 
+
+
+
+
+**ip route del DEST [via ADDRESS] [COMMAND]**
+
+
+
+
+ip route del命令用于删除指定的路由条目，和route命令一样，ip route命令删除路由条目时可以不用指定创建该路由条目时的所有参数。如果指定部分参数就可以保证该路由条目是唯一的，那就只要指定部分参数即可，否则，可以继续增加参数，直到这些参数保证路由条目时唯一的，就可以精确删除某条路由条目。如果参数对应了多条路由条目，那么会删除第一条被匹配到的。ip route del命令的参数与ip route add命令的参数基本一致。
+
+
+
+    
+    [root@edu ~]# ip route del default  #有多条路由条目匹配到default,故默认删除第一条被匹配到的
+    [root@edu ~]# ip route show  #可以发现前面添加的默认路由被删除了
+    default via 10.60.72.1 dev ens33 proto static metric 100 
+    10.60.72.0/24 dev ens33 proto kernel scope link src 10.60.72.190 metric 100 
+    192.168.199.0/24 via 10.60.72.1 dev ens33 
+
+
+
+
+ 
+
+
+
+
+**ip route [ list | show ] [COMMAND]**
+
+
+
+
+ip route show 命令用于显示指定的路由条目，默认显示所有的路由条目。list或者show都可以省略。需要注意的是，ip route show命令可以显示指定属性的路由条目，但是此处对这个内容不做讲述。
+
+
+
+    
+    [root@edu ~]# ip route 
+    default via 10.60.72.1 dev ens33 proto static metric 100 
+    10.60.72.0/24 dev ens33 proto kernel scope link src 10.60.72.190 metric 100 
+    192.168.199.0/24 via 10.60.72.1 dev ens33 
+    [root@edu ~]# ip route show
+    default via 10.60.72.1 dev ens33 proto static metric 100 
+    10.60.72.0/24 dev ens33 proto kernel scope link src 10.60.72.190 metric 100 
+    192.168.199.0/24 via 10.60.72.1 dev ens33 
+    [root@edu ~]# ip route list
+    default via 10.60.72.1 dev ens33 proto static metric 100 
+    10.60.72.0/24 dev ens33 proto kernel scope link src 10.60.72.190 metric 100 
+    192.168.199.0/24 via 10.60.72.1 dev ens33 
+    [root@edu ~]# 
+    
+
+
+
+
+ 
+
+
+
+
+**ip route flush COMMAND**
+
+
+
+
+ip route flush命令用于按照某些标准删除路由条目，具体使用方法和参数与ip route show 基本一致。使用ip命令的-s选项可以显示被删除的路由条目和删除的数量，-ss选项可以以特定格式显示被删除的路由条目。这里对于COMMAND中的内容不做讲述，需要了解的可以通过上述提到的命令或者自行查阅相关资料。
+
+
+
+
+ 
+
+
+
+
+## ss命令
+
+
+
+
+ss命令用于替代ifcfg套件中的netstat命令，和netstat命令一样，ss命令可以显示套接字的详细信息，并且用法与netstat基本一致，另外ss命令还提供了一些netstat命令所没有的新特性。而且当连接数增多时，特别是在一个非常繁忙的服务器上，netstat命令的性能将会大打折扣，而ss命令则依旧性能良好。
+
+
+
+
+### 命令用法
+
+
+
+
+**ss [options] [ FILTER ]**
+
+
+
+
+### 常用选项
+
+
+
+
+**-n, --numeric** : 以数字方式显示信息，比如不会将端口号反解成协议名。
+
+
+
+
+**-a, --all** : 显示所有的监听和非监听套接字。
+
+
+
+
+**-l, --listening** : 只显示处于监听状态的套接字。默认不显示处于监听状态的套接字。
+
+
+
+
+**-o, --options** : 显示计时器信息。
+
+
+
+
+**-e, --extended** : 显示套接字的一些拓展信息。
+
+
+
+
+**-m, --memory** : 显示套接字的内存使用情况。
+
+
+
+
+**-p, --processes** : 显示持有该套接字的进程PID和发起进程的用户以及其持有的文件描述符。
+
+
+
+
+**-4, --ipv4** : 只显示使用ipv4的套接字
+
+
+
+
+**-6, --ipv6** : 只显示使用ipv6的套接字
+
+
+
+
+**-t, --tcp** : 只显示TCP套接字。
+
+
+
+
+**-u, --udp** : 只显示UDP套接字。
+
+
+
+
+**-w, --raw** : 只显示原始套接字。原始套接字（raw socket）指的是不经过传输层封装直接发送和接收的IP报文。
+
+
+
+
+**-x, --unix** : 只显示Unix套接字。通过本机套接字文件实现的连接。
+
+
+
+
+ 
+
+
+
+
+### FILTER
+
+
+
+
+FILTER为过滤器，由 [ **state STATE-FILTER** ] 和 [ **EXPRESSION** ] 组成。STATE-FILTER为TCP状态过滤，EXPRESSION为表达式过滤。
+
+
+
+
+可用的STATE-FILTER : established, syn-sent, syn-recv, fin-wait-1, fin-wait-2, time-wait, closed, close-wait, last-ack, listen and closing.
+
+
+
+
+也可以使用内置变量快速指定TCP状态，常用内置变量如下所示:
+
+
+
+
+**all** : 表示所有的状态。
+
+
+
+
+**connected** : 表示除了listen 和closed之外的所有状态。
+
+
+
+
+**synchronized** : 表示除了syn-sent、listen 和closed之外的所有状态。
+
+
+
+
+ 
+
+
+
+
+常用的EXPRESSION为端口过滤，如下所示:
+
+
+
+
+**'( dport = :ssh or sport = :ssh )'**
+
+
+
+
+表示只显示目标端口为22或者源端口为22的套接字。
+
+
+
+
+ 
+
+
+
+
+### 显示所有监听状态的tcp连接以及持有该连接的进程。
+
+
+
+    
+    [root@edu ~]# ss -tnlp
+    State      Recv-Q Send-Q  Local Address:Port                 Peer Address:Port              
+    LISTEN     0      128                 *:22                              *:*                   users:(("sshd",pid=929,fd=3))
+    LISTEN     0      100         127.0.0.1:25                              *:*                   users:(("master",pid=1035,fd=13))
+    LISTEN     0      128                :::22                             :::*                   users:(("sshd",pid=929,fd=4))
+    LISTEN     0      100               ::1:25                             :::*                   users:(("master",pid=1035,fd=14))
+    
+
+
+
+
+ 
+
+
+
+
+### 显示所有的tcp连接
+
+
+
+    
+    [root@edu ~]# ss -tan
+    State      Recv-Q Send-Q  Local Address:Port                 Peer Address:Port              
+    LISTEN     0      128                 *:22                              *:*                  
+    LISTEN     0      100         127.0.0.1:25                              *:*                  
+    ESTAB      0      52       10.60.72.190:22                    10.60.72.28:3558               
+    LISTEN     0      128                :::22                             :::*                  
+    LISTEN     0      100               ::1:25                             :::* 
+
+
+
+
+ 
+
+
+
+
+### 显示计时器和处于established状态的tcp连接，要求源端口为22端口。
+
+
+
+    
+    [root@edu ~]# ss -o state established '( sport = :ssh )'
+    Netid  Recv-Q Send-Q  Local Address:Port                   Peer Address:Port                
+    tcp    0      52       10.60.72.190:ssh                     10.60.72.28:mcp-port              timer:(on,368ms,0)
+    timer:(on,368ms,0)
+    
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

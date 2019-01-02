@@ -1,0 +1,1243 @@
+---
+author: edmund
+comments: true
+date: 2018-06-12 06:11:35+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/06/12/linux%e8%bf%9b%e7%a8%8b%e7%ae%a1%e7%90%86%e4%b9%8b%e8%bf%9b%e7%a8%8b%e7%ae%a1%e7%90%86%e5%b7%a5%e5%85%b71/
+slug: linux%e8%bf%9b%e7%a8%8b%e7%ae%a1%e7%90%86%e4%b9%8b%e8%bf%9b%e7%a8%8b%e7%ae%a1%e7%90%86%e5%b7%a5%e5%85%b71
+title: Linux进程管理之进程管理工具1
+wordpress_id: 397
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- linux
+- 命令
+- 进程管理
+---
+
+# Linux进程管理
+
+
+
+
+进程在操作系统上是一个非常重要的概念，**一个进程，也可以称为一个task，是一个程序的执行实体，每个进程都被分配一个独一无二的进程ID号（PID）**。Linux 是一种动态系统，能够适应不断变化的计算需求。Linux 计算需求的表现是以进程为中心的。进程可以是短期的（从命令行执行的一个命令），也可以是长期的（一种网络服务）。因此，对进程及其调度进行一般管理就显得极为重要。
+
+
+
+
+事实上，在Linux中，进程管理是系统管理员经常需要完成的工作，比如在某个应用出故障，或者某台主机出现cpu占用率过高，都需要检查进程的运行状况才能排查出问题所在，有时候怀疑主机中被植入了木马或者后面，也可以通过检查可疑进程解决问题。
+
+
+
+
+这一章将会详细介绍Linux中常用的进程管理工具及其用法和常用选项，对于一些进程的细节部分将不予以深入解释，需要了解进程管理知识的同学可以去查阅相关资料，这里推荐一本书**《Linux内核设计与实现》**，浅显易懂地阐述了Linux内核的运行机制，其中当然包括进程管理。
+
+
+
+
+
+
+
+# ps命令
+
+
+
+
+ps命令，可以理解为**Process Status**或者**Process Snapshot**，用于查看当前系统中各进程的状态信息，包括进程的PID、进程占用的系统资源、进程的运行状态、进程运行的时间、启动该进程所执行的命令等。
+
+
+
+
+该命令有两种使用风格，一种是UNIX风格，一种是BSD风格。**UNIX风格下要求每个选项需要使用dash，而BSD风格下则不需要使用dash**。
+
+
+
+
+ps命令的用法很简单，ps后面跟上相应的选项即可 : **ps [OPTIONS]** 。
+
+
+
+
+最基础的用法是ps后面不跟任何选项和参数，默认会打印至少两个进程的四种信息，一个SHELL进程和一个当前正在运行的ps进程。而四种信息分别为 : **PID**, **TTY**, **TIME**, **CMD** 。**PID**即表示进程的ID号。**TTY**表示运行进程的用户所在的终端，查看当前自己所在终端可以通过**tty**命令。**TIME**表示进程在CPU中运行的总时间。**CMD**表示发起这个进程的命令名。
+
+
+
+    
+    [root@edu ~]# ps
+       PID TTY          TIME CMD
+      1110 pts/0    00:00:00 bash
+      1259 pts/0    00:00:00 ps
+
+
+
+
+##  
+
+
+
+
+## 常用组合
+
+
+
+
+### 1、使用UNIX标准语法打印系统中的每一个进程及其详细信息
+
+
+
+
+**ps -ef**
+
+
+
+
+**ps -eF**
+
+
+
+
+**ps -elf**
+
+
+
+
+**-e** : 打印所有进程。默认只输出四列信息。
+
+
+
+
+**-f** : 比-e输出更多的信息。
+
+
+
+
+**-F** : 比-f输出更多的信息。
+
+
+
+
+**-l** : 和-f一起使用，输出比-F更多的信息。
+
+
+
+    
+    [root@edu ~]# ps -ef | head
+    UID         PID   PPID  C STIME TTY          TIME CMD
+    root          1      0  0 15:52 ?        00:00:01 /usr/lib/systemd/systemd --switched-root --system --deserialize 21
+    root          2      0  0 15:52 ?        00:00:00 [kthreadd]
+    root          3      2  0 15:52 ?        00:00:00 [ksoftirqd/0]
+    root          5      2  0 15:52 ?        00:00:00 [kworker/0:0H]
+    root          7      2  0 15:52 ?        00:00:00 [migration/0]
+    root          8      2  0 15:52 ?        00:00:00 [rcu_bh]
+    root          9      2  0 15:52 ?        00:00:01 [rcu_sched]
+    root         10      2  0 15:52 ?        00:00:00 [watchdog/0]
+    root         11      2  0 15:52 ?        00:00:00 [watchdog/1]
+    
+
+
+
+    
+    [root@edu ~]# ps -eF | head
+    UID         PID   PPID  C    SZ   RSS PSR STIME TTY          TIME CMD
+    root          1      0  0 32041  6812   0 15:52 ?        00:00:01 /usr/lib/systemd/systemd --switched-root --system --deserialize 21
+    root          2      0  0     0     0   1 15:52 ?        00:00:00 [kthreadd]
+    root          3      2  0     0     0   0 15:52 ?        00:00:00 [ksoftirqd/0]
+    root          5      2  0     0     0   0 15:52 ?        00:00:00 [kworker/0:0H]
+    root          7      2  0     0     0   0 15:52 ?        00:00:00 [migration/0]
+    root          8      2  0     0     0   0 15:52 ?        00:00:00 [rcu_bh]
+    root          9      2  0     0     0   1 15:52 ?        00:00:01 [rcu_sched]
+    root         10      2  0     0     0   0 15:52 ?        00:00:00 [watchdog/0]
+    root         11      2  0     0     0   1 15:52 ?        00:00:00 [watchdog/1]
+    
+
+
+
+    
+    [root@edu ~]# ps -elf | head
+    F S UID         PID   PPID  C PRI  NI ADDR SZ WCHAN  STIME TTY          TIME CMD
+    4 S root          1      0  0  80   0 - 32041 ep_pol 15:52 ?        00:00:01 /usr/lib/systemd/systemd --switched-root --system --deserialize 21
+    1 S root          2      0  0  80   0 -     0 kthrea 15:52 ?        00:00:00 [kthreadd]
+    1 S root          3      2  0  80   0 -     0 smpboo 15:52 ?        00:00:00 [ksoftirqd/0]
+    1 S root          5      2  0  60 -20 -     0 worker 15:52 ?        00:00:00 [kworker/0:0H]
+    1 S root          7      2  0 -40   - -     0 smpboo 15:52 ?        00:00:00 [migration/0]
+    1 S root          8      2  0  80   0 -     0 rcu_gp 15:52 ?        00:00:00 [rcu_bh]
+    1 S root          9      2  0  80   0 -     0 rcu_gp 15:52 ?        00:00:01 [rcu_sched]
+    5 S root         10      2  0 -40   - -     0 smpboo 15:52 ?        00:00:00 [watchdog/0]
+    5 S root         11      2  0 -40   - -     0 smpboo 15:52 ?        00:00:00 [watchdog/1]
+
+
+
+
+ 
+
+
+
+
+### 2、使用BSD语法打印系统中的每一个进程及其详细信息
+
+
+
+
+**ps aux**
+
+
+
+
+**a** : 打印所有和终端相关的进程（一般和终端相关的进程是由用户在shell下启动的进程）
+
+
+
+
+**x** : 打印所有与终端无关的进程，与a选项一起使用表示显示所有进程（一般和终端无关的进程是在boot阶段启动的守护进程（daemon））
+
+
+
+
+**u** : 使用面向用户的打印格式。打印更加详细的进程信息。
+
+
+
+    
+    [root@edu ~]# ps aux | head
+    USER        PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+    root          1  0.0  0.6 128164  6812 ?        Ss   15:52   0:01 /usr/lib/systemd/systemd --switched-root --system --deserialize 21
+    root          2  0.0  0.0      0     0 ?        S    15:52   0:00 [kthreadd]
+    root          3  0.0  0.0      0     0 ?        S    15:52   0:00 [ksoftirqd/0]
+    root          5  0.0  0.0      0     0 ?        S<   15:52   0:00 [kworker/0:0H]
+    root          7  0.0  0.0      0     0 ?        S    15:52   0:00 [migration/0]
+    root          8  0.0  0.0      0     0 ?        S    15:52   0:00 [rcu_bh]
+    root          9  0.0  0.0      0     0 ?        S    15:52   0:01 [rcu_sched]
+    root         10  0.0  0.0      0     0 ?        S    15:52   0:00 [watchdog/0]
+    root         11  0.0  0.0      0     0 ?        S    15:52   0:00 [watchdog/1]
+    
+
+
+
+
+###  
+
+
+
+
+### 3、使用UNIX标准语法打印进程树
+
+
+
+
+**ps -ejH**
+
+
+
+
+**-j** : 以Job格式输出信息。
+
+
+
+
+**-H** : 显示进程的层级关系。
+
+
+
+    
+    [root@edu ~]# ps -ejH | head  #可以看在在CMD列的命令出现了缩进，这表示这些缩进的进程都是第一个未缩进的命令的子进程
+       PID   PGID    SID TTY          TIME CMD
+         2      0      0 ?        00:00:00 kthreadd
+         3      0      0 ?        00:00:00   ksoftirqd/0
+         5      0      0 ?        00:00:00   kworker/0:0H
+         7      0      0 ?        00:00:00   migration/0
+         8      0      0 ?        00:00:00   rcu_bh
+         9      0      0 ?        00:00:01   rcu_sched
+        10      0      0 ?        00:00:00   watchdog/0
+        11      0      0 ?        00:00:00   watchdog/1
+        12      0      0 ?        00:00:00   migration/1
+
+
+
+
+ 
+
+
+
+
+### 4、使用BSD语法打印进程树
+
+
+
+
+**ps axjf**
+
+
+
+
+**j** : 以BSD的任务管理（job control）格式输出信息。
+
+
+
+
+**f** : 以ASCII的风格显示进程的层级关系。
+
+
+
+    
+    [root@edu ~]# ps axjf | head  #和UNIX使用缩进类似，BSD使用了\_ 符号来表示层级关系
+      PPID    PID   PGID    SID TTY       TPGID STAT   UID   TIME COMMAND
+         0      2      0      0 ?            -1 S        0   0:00 [kthreadd]
+         2      3      0      0 ?            -1 S        0   0:00  \_ [ksoftirqd/0]
+         2      5      0      0 ?            -1 S<       0   0:00  \_ [kworker/0:0H]
+         2      7      0      0 ?            -1 S        0   0:00  \_ [migration/0]
+         2      8      0      0 ?            -1 S        0   0:00  \_ [rcu_bh]
+         2      9      0      0 ?            -1 S        0   0:01  \_ [rcu_sched]
+         2     10      0      0 ?            -1 S        0   0:00  \_ [watchdog/0]
+         2     11      0      0 ?            -1 S        0   0:00  \_ [watchdog/1]
+         2     12      0      0 ?            -1 S        0   0:00  \_ [migration/1]
+
+
+
+
+ 
+
+
+
+
+### 5、使用UNIX标准语法以用户自定义的信息格式打印系统中的每一个进程及其详细信息。关于每一个关键字的描述请参考该命令的man文档的STANDARD FORMAT SPECIFIERS章节。
+
+
+
+
+**ps -eo [keyword1,keyword2,...]**
+
+
+
+
+**-o [keyword1,keyword2,...]** : 用户自定义的信息输出格式。keyword表示每一个需要输出的信息，多个keyword之间使用逗号或者空格分隔。用户可以自定义需要输出哪些信息、这些信息输出的顺序、信息输出时的字段名等。
+
+
+
+
+示例 : **ps -eo pid,tid,class,rtprio,ni,pri,psr,pcpu,stat,wchan:14,comm**
+
+
+
+    
+    [root@edu ~]# ps -eo pid,tid,class,rtprio,ni,pri,psr,pcpu,stat,wchan:14,comm | head
+       PID    TID CLS RTPRIO  NI PRI PSR %CPU STAT WCHAN          COMMAND
+         1      1 TS       -   0  19   0  0.0 Ss   ep_poll        systemd
+         2      2 TS       -   0  19   1  0.0 S    kthreadd       kthreadd
+         3      3 TS       -   0  19   0  0.0 S    smpboot_thread ksoftirqd/0
+         5      5 TS       - -20  39   0  0.0 S<   worker_thread  kworker/0:0H
+         7      7 FF      99   - 139   0  0.0 S    smpboot_thread migration/0
+         8      8 TS       -   0  19   0  0.0 S    rcu_gp_kthread rcu_bh
+         9      9 TS       -   0  19   1  0.0 S    rcu_gp_kthread rcu_sched
+        10     10 FF      99   - 139   0  0.0 S    smpboot_thread watchdog/0
+        11     11 FF      99   - 139   1  0.0 S    smpboot_thread watchdog/1
+
+
+
+
+ 
+
+
+
+
+ 
+
+
+
+
+### 6、使用BSD语法以以用户自定义的信息格式打印系统中的每一个进程及其详细信息。关于每一个关键字的描述请参考该命令的man文档的STANDARD FORMAT SPECIFIERS章节。
+
+
+
+
+**ps axo [keyword1,keyword2,...]**
+
+
+
+
+**o** **[keyword1,keyword2,...]**: 用户自定义的信息输出格式。keyword表示每一个需要输出的信息，多个keyword之间使用逗号或者空格分隔。用户可以自定义需要输出哪些信息、这些信息输出的顺序、信息输出时的字段名等。
+
+
+
+
+示例 : **ps axo stat,euid,ruid,tty,tpgid,sess,pgrp,ppid,pid,pcpu,comm**
+
+
+
+    
+    [root@edu ~]# ps axo stat,euid,ruid,tty,tpgid,sess,pgrp,ppid,pid,pcpu,comm | head
+    STAT  EUID  RUID TT        TPGID   SESS   PGRP   PPID    PID %CPU COMMAND
+    Ss       0     0 ?            -1      1      1      0      1  0.0 systemd
+    S        0     0 ?            -1      0      0      0      2  0.0 kthreadd
+    S        0     0 ?            -1      0      0      2      3  0.0 ksoftirqd/0
+    S<       0     0 ?            -1      0      0      2      5  0.0 kworker/0:0H
+    S        0     0 ?            -1      0      0      2      7  0.0 migration/0
+    S        0     0 ?            -1      0      0      2      8  0.0 rcu_bh
+    R        0     0 ?            -1      0      0      2      9  0.0 rcu_sched
+    S        0     0 ?            -1      0      0      2     10  0.0 watchdog/0
+    S        0     0 ?            -1      0      0      2     11  0.0 watchdog/1
+    
+
+
+
+
+ 
+
+
+
+
+### 7、显示systemd进程的pid
+
+
+
+
+**ps -C systemd-o pid=**
+
+
+
+
+**-C** : 命令名列表，可以接收多个命令名。表示通过命令名查找进程。
+
+
+
+
+**-o pid=** : 使用自定义输出格式时可以自定义每一个字段的名字，使用 字段名=RENAME 即可。如果RENAME为空，则该列的字段名不会显示出来。
+
+
+
+    
+    [root@edu ~]# ps -C systemd -o pid=
+         1
+    
+
+
+
+
+ 
+
+
+
+
+### 8、显示pid为42的进程的命令名
+
+
+
+
+**ps -q 42 -o comm=**
+
+
+
+
+**-q** : pid列表，可以接收多个pid。表示通过pid查找进程。
+
+
+
+
+**-o comm=** : 使用自定义输出格式时可以自定义每一个字段的名字，使用 字段名=RENAME 即可。如果RENAME为空，则该列的字段名不会显示出来。
+
+
+
+    
+    [root@edu ~]# ps -q 42 -o comm=
+    kthrotld
+    
+
+
+
+
+ 
+
+
+
+
+## ps命令常见输出字段及其解释
+
+
+
+
+**USER** : 发起该进程的用户。
+
+
+
+
+**PID** : 进程的PID。
+
+
+
+
+**%CPU** : 进程占用的CPU百分比。
+
+
+
+
+** %MEM** : 进程占用的内存百分比。
+
+
+
+
+** VSZ** : 进程占用的虚拟内存大小（线性地址空间大小）。
+
+
+
+
+**RSS** : 进程占用的常驻（Resident）内存大小。
+
+
+
+
+**TTY** : 进程所关联至的终端名。?表示无关联终端。
+
+
+
+
+**STAT** : 进程运行状态。**见下方STAT字段常见状态及其解释**。
+
+
+
+
+**START** : 进程开始运行的时间。如果大于一天则显示为日期。
+
+
+
+
+**TIME** : 进程在CPU中运行的总时长。
+
+
+
+
+**COMMAND** : 运行进程所使用的命令（包括命令选项和参数等各种字符串）。
+
+
+
+
+**NI** : 进程的nice值。
+
+
+
+
+**PRI** : 进程的优先级。
+
+
+
+
+**PSR** : 进程运行所处的CPU。
+
+
+
+
+**RTPRIO** : 进程的实时优先级。
+
+
+
+
+ 
+
+
+
+
+## STAT字段常见状态及其解释
+
+
+
+
+**D** uninterruptible sleep (usually IO) : 不可中断睡眠状态。通常是在等待IO结束。
+
+
+
+
+**R** running or runnable (on run queue) : 运行或者可运行状态。
+
+
+
+
+**S** interruptible sleep (waiting for an event to complete) : 可中断睡眠。通常在等待某个事件的发生或者结束。
+
+
+
+
+**T** stopped by job control signal : 终止状态。通常是被信号量终止的。
+
+
+
+
+**Z** defunct ("zombie") process, terminated but not reaped by its parent : 僵死态。已经终止但是没有被其父进程回收的进程所处的状态。
+
+
+
+
+### 使用BSD语法时的附加状态
+
+
+
+
+**<** high-priority (not nice to other users) : 高优先级进程。
+
+
+
+
+**N** low-priority (nice to other users) : 低优先级进程。
+
+
+
+
+**s** is a session leader : 会话的领导进程。建立本次session的进程即为session leader，一旦session leader被终止，那么创建在session leader下的进程也相应需要被终止。
+
+
+
+
+**l** is multi-threaded (using CLONE_THREAD, like NPTL pthreads do) : 该进程以多线程方式工作。
+
+
+
+
+**+** is in the foreground process group : 该进程是前台进程。
+
+
+
+
+
+
+
+# pstree命令
+
+
+
+
+pstree命令用于以树状结构打印进程，即打印进程树。同时，可以显示各个进程的信息。虽然ps命令也可以打印进程树，但是ps命令的进程树输出实在是不利于阅读，相反pstree命令的输出则非常直观。 
+
+
+
+    
+    [root@edu ~]# pstree -p       #-p选项表示显示进程的PID。可以看到pstree的输出将进程使用符号连接，左边的为父进程，而右边的为子进程，可以很容易从pstree的输出分析各个进程的层级结构。
+    systemd(1)─┬─NetworkManager(655)─┬─{NetworkManager}(673)
+               │                     └─{NetworkManager}(681)
+               ├─VGAuthService(607)
+               ├─agetty(624)
+               ├─auditd(575)───{auditd}(576)
+               ├─crond(610)
+               ├─dbus-daemon(600)───{dbus-daemon}(602)
+               ├─firewalld(636)───{firewalld}(775)
+               ├─irqbalance(604)
+               ├─lvmetad(405)
+               ├─master(1098)─┬─pickup(1728)
+               │              └─qmgr(1104)
+               ├─polkitd(605)─┬─{polkitd}(630)
+               │              ├─{polkitd}(631)
+               │              ├─{polkitd}(632)
+               │              ├─{polkitd}(633)
+               │              └─{polkitd}(634)
+               ├─rsyslogd(603)─┬─{rsyslogd}(628)
+               │               └─{rsyslogd}(629)
+               ├─sshd(991)───sshd(1107)───bash(1110)───pstree(1765)
+               ├─systemd-journal(383)
+               ├─systemd-logind(598)
+               ├─systemd-udevd(404)
+               ├─tuned(992)─┬─{tuned}(1039)
+               │            ├─{tuned}(1040)
+               │            ├─{tuned}(1041)
+               │            └─{tuned}(1042)
+               └─vmtoolsd(608)───{vmtoolsd}(644)
+    
+
+
+
+
+
+
+
+# pgrep和pkill命令
+
+
+
+
+在网络管理中，我们经常会使用到netstat或者ss命令查看套接字的情况，有时候为了验证某个服务是否启动成功，我们经常会使用netstat命令配合grep命令来查看。所以同样的，在进程管理中，当我们使用ps命令查看进程信息时，我们同样可以使用grep命令来配合查看一些我们想要的信息，但是为了得到我们想要的信息，我们就需要组合一串命令或者写一串pattern去查找信息，这就显得不那么方便了。而pgrep命令则可以解决这个问题。
+
+
+
+
+同样的我们也会需要找到某个指定的进程，并将它杀死，通常我们需要使用ps命令配合grep命令找到该进程的pid，然后使用kill命令将其杀死，这样就显得有些麻烦。而pkill可以解决这个问题。
+
+
+
+
+pgrep命令可以通过指定进程的某些属性（attribute）来方便快速地查找指定进程或者进程的信息。而pkill命令也可以通过指定进程的某些属性（attribute）来杀死某些进程。
+
+
+
+
+pgrep和pkill的使用也很简单 : 
+
+
+
+
+**pgrep [options] pattern**
+
+
+
+
+**pkill[options] pattern  **
+
+
+
+
+## 常用选项
+
+
+
+
+**-l, --list-name** : 显示进程名和进程ID。**（pgrep only）**
+
+
+
+
+**-a, --list-full** : 显示完整的命令名和进程ID。**（pgrep only）**
+
+
+
+
+**-c, --count** : 只显示匹配的进程数量。
+
+
+
+
+**-P, --parent ppid,...** : 只匹配以ppid作为父进程的进程。可以指定多个ppid，以 逗号 分隔。
+
+
+
+
+**-t, --terminal term,...** : 只匹配依附在指定终端上的进程。可以指定多个term，以 逗号 分隔。
+
+
+
+
+**-u, --euid euid,...** : 只匹配有效用户ID为指定euid的进程。可以指定多个euid，以 逗号 分隔。
+
+
+
+
+**-U, --uid uid,...** : 只匹配真实用户ID为指定uid的进程。可以指定多个uid，以 逗号 分隔。
+
+
+
+
+**-v, --inverse** : 反选。常用于pgrep。由于该选项过于危险，所以对于pkill禁用短选项，只能使用长选项。
+
+
+
+
+**-signal, --signal signal** : 定义需要向匹配的进程发送的信号量，数字或者字符形式均可。 **(pkill only)**
+
+
+
+
+ 
+
+
+
+    
+    [root@edu ~]# pgrep -la sshd  #显示所有匹配sshd的进程的进程PID和进程名以及发起进程的命令名
+    991 /usr/sbin/sshd -D
+    1107 sshd: root@pts/0    
+    1820 sshd: root@pts/1    
+    [root@edu ~]# pgrep -c -u root   #显示root用户发起的进程的数目
+    104
+    [root@edu ~]# pgrep -la -v -u root  #显示所有不是由root用户发起的进程
+    600 /bin/dbus-daemon --system --address=systemd: --nofork --nopidfile --systemd-activation
+    605 /usr/lib/polkit-1/polkitd --no-debug
+    1104 qmgr -l -t unix -u
+    2563 pickup -l -t unix -u
+    
+
+
+
+
+
+
+
+# pidof命令
+
+
+
+
+先前我们在ps命令中通过自定义用户输出实现了输出指定进程的pid，现在这里有个更好的解决方案，使用pidof命令就能完成。
+
+
+
+
+命令用法也很简单 : **pidof program [program..]**
+
+
+
+    
+    [root@edu ~]# pidof sshd
+    1820 1107 991
+    [root@edu ~]# pidof systemd
+    1
+    
+
+
+
+
+
+
+
+# top命令
+
+
+
+
+还记得ps命令有一个称呼叫做**process snapshot**吗？从名字上就可以看出来，**ps命令只能够提供系统在某个时间点上的运行情况，而为了持续地跟踪系统或者进程的运行状况，top命令提供了一个动态实时的系统运行视图**。它可以显示系统的概要信息和当前系统中的线程或者进程列表。对于进程或线程也显示了其进程属性信息。
+
+
+
+
+top命令基本上不需要使用选项，因为它是一个动态的支持交互式查看的程序，只需要运行top命令即可。
+
+
+
+
+在键入了top命令后，我们就能够看到一个类似于windows下的任务管理器一般的界面。
+
+
+
+    
+    top - 08:29:49 up 33 min,  1 user,  load average: 0.00, 0.01, 0.02
+    Tasks: 108 total,   1 running, 107 sleeping,   0 stopped,   0 zombie
+    %Cpu(s):  0.0 us,  3.1 sy,  0.0 ni, 96.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+    KiB Mem :   999720 total,   691980 free,   121604 used,   186136 buff/cache
+    KiB Swap:   975868 total,   975868 free,        0 used.   697496 avail Mem 
+    
+       PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+      1219 root      20   0  157584   2028   1468 R   6.2  0.2   0:00.01 top
+         1 root      20   0  193700   6820   4044 S   0.0  0.7   0:00.84 systemd
+         2 root      20   0       0      0      0 S   0.0  0.0   0:00.00 kthreadd
+         3 root      20   0       0      0      0 S   0.0  0.0   0:00.04 ksoftirqd/0
+         4 root      20   0       0      0      0 S   0.0  0.0   0:00.00 kworker/0:0
+         5 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kworker/0:0H
+         7 root      rt   0       0      0      0 S   0.0  0.0   0:00.10 migration/0
+         8 root      20   0       0      0      0 S   0.0  0.0   0:00.00 rcu_bh
+         9 root      20   0       0      0      0 S   0.0  0.0   0:01.02 rcu_sched
+        10 root      rt   0       0      0      0 S   0.0  0.0   0:00.00 watchdog/0
+        11 root      rt   0       0      0      0 S   0.0  0.0   0:00.00 watchdog/1
+        12 root      rt   0       0      0      0 S   0.0  0.0   0:00.02 migration/1
+        13 root      20   0       0      0      0 S   0.0  0.0   0:00.01 ksoftirqd/1
+        15 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kworker/1:0H
+        17 root      20   0       0      0      0 S   0.0  0.0   0:00.00 kdevtmpfs
+        18 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 netns
+        19 root      20   0       0      0      0 S   0.0  0.0   0:00.00 khungtaskd
+        20 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 writeback
+        21 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kintegrityd
+    
+
+
+
+
+
+
+
+## 有时候我们也会用到一些top的选项，下面列举几个最常用的 : 
+
+
+
+
+**-b** : 以批处理模式启动top。在默认情况下，top是全屏幕交互式启动的，使用批处理模式就会在每次刷新时都在命令行打印新的一屏，适合用来将输出送至其他程序或者文件。
+
+
+
+
+**-d INTERVAL** : 指定两次刷新之间的间隔时间。
+
+
+
+
+**-n NUMBER** : 指定top在刷新NUMBER次后退出，一般适合于-b配合使用。
+
+
+
+
+ 
+
+
+
+
+## 关于top中各个字段的意义
+
+
+
+
+### **第一行的字段**（**如果你平时有所注意的话你会发现w命令和uptime命令都能输出第一行的信息**）
+
+
+
+
+08:29:49 up 33 min, 1 user, load average: 0.00, 0.01, 0.02
+
+
+
+
+**08:29:49** : 表示当前时间。
+
+
+
+
+**up 33 min** : 表示从boot至现在经过的总时间。即系统开机后运行的时间。这里为33分钟。
+
+
+
+
+**1 user** : 表示从boot至现在系统中登录的总用户数。这里登录了1个用户。
+
+
+
+
+**load average**: 0.00, 0.01, 0.02 : 表示系统的平均负载，这里的第一个0.00表示过去1分钟内的平均进程数，包括runnable和uninterruptable状态的进程。相应的，0.01为过去5分钟内，0.02为过去15分钟内。平均负载意味着当前的cpu承受的工作量，如果为0，则表示当前cpu完全空闲，为0.5，表示cpu的计算能力被占用了50%，为1，表示cpu在满负荷运行，需要注意的是，即使为1，此时也是能够通畅运行的，一旦超过1，则超过1的那些部分则需要进入等待。所以，如果发现load average即将到达1，则需要非常注意。（详情可参考 : [http://www.ruanyifeng.com/blog/2011/07/linux_load_average_explained.html](http://www.ruanyifeng.com/blog/2011/07/linux_load_average_explained.html)）
+
+
+
+
+ 
+
+
+
+
+### **第二行的字段**
+
+
+
+
+Tasks: 108 total, 1 running, 107 sleeping, 0 stopped, 0 zombie
+
+
+
+
+**108 total** : 表示当前系统上一共跑了108个进程。
+
+
+
+
+**1 running** : 表示当前系统上有一个正在运行的进程。
+
+
+
+
+**107 sleeping** : 表示系统上有107个进程处于睡眠状态。
+
+
+
+
+**0 stopped** : 表示系统上有0个进程处于停止状态。（被挂起）
+
+
+
+
+**0 zombie** : 表示系统上有0个僵死进程。
+
+
+
+
+ 
+
+
+
+
+### **第三行的字段**
+
+
+
+
+%Cpu(s): 0.0 us, 3.1 sy, 0.0 ni, 96.9 id, 0.0 wa, 0.0 hi, 0.0 si, 0.0 st
+
+
+
+
+**0.0 us** : 表示运行un-niced 用户进程的cpu时间。
+
+
+
+
+**3.1 sy** : 表示运行内核进程的cpu时间。
+
+
+
+
+**0.0 ni** : 表示运行niced 用户进程的cpu时间。
+
+
+
+
+** 96.9 id** : 表示处于空闲的cpu时间。
+
+
+
+
+**0.0 wa** : 表示等待I/O完成的cpu时间。
+
+
+
+
+**0.0 hi** : 表示处理硬中断的cpu时间。
+
+
+
+
+**0.0 si** : 表示处理软中断的cpu时间。
+
+
+
+
+**0.0 st** : 表示被hypervisor从这台虚拟机中偷走的cpu时间。即该虚拟机已经准备好运行一条指令但是却得不到虚拟cpu而在等待的时间。
+
+
+
+
+ 
+
+
+
+
+### **第四行的字段**
+
+
+
+
+KiB Mem : 999720 total, 691980 free, 121604 used, 186136 buff/cache
+
+
+
+
+**999720 total** : 表示总内存大小。
+
+
+
+
+**691980 free** : 表示尚未被使用掉的内存大小。
+
+
+
+
+**121604 used** : 表示已经被使用掉的内存大小。（used = total - free - buffer - cache）
+
+
+
+
+**86136 buff/cache** : 表示缓冲/缓存使用的内存大小。
+
+
+
+
+ 
+
+
+
+
+### 第五行的字段
+
+
+
+
+KiB Swap: 975868 total, 975868 free, 0 used. 697496 avail Mem 
+
+
+
+
+**975868 total** : 交换分区的总大小。
+
+
+
+
+**975868 free** : 尚未被使用的交换分区大小。
+
+
+
+
+** 0 used** : 已经被使用掉的交换分区大小。
+
+
+
+
+**697496 avail Mem** : 表示可用的内存大小，注意是内存。avail和free的区别就是free不能代表真正可被应用程序使用的内存大小，因为虽然系统中有些内存已经被使用了，但是实际上部分被使用的内存是可以被释放出来供应用程序使用的，比如cache/buffer、slab都有一部分可以回收，所以MemFree不能代表全部可用的内存，这部分可回收的内存加上MemFree才是系统可用的内存，即：**MemAvailable≈MemFree+Buffers+Cached**，它是内核使用特定的算法计算出来的，是一个估计值。（可以参考 : [http://linuxperf.com/?p=142](http://linuxperf.com/?p=142)）
+
+
+
+
+ 
+
+
+
+
+### 第六行的字段
+
+
+
+
+PID USER PR NI VIRT RES SHR S %CPU %MEM TIME+ COMMAND
+
+
+
+
+**PID** : 进程的PID。
+
+
+
+
+**USER** : 发起进程的用户。
+
+
+
+
+**PR** : 进程的优先级。
+
+
+
+
+**NI** : 进程的NICE值。
+
+
+
+
+**VIRT** : 进程占用的虚拟内存空间。
+
+
+
+
+**RES** : 进程占用的常驻内存空间。
+
+
+
+
+**SHR** : 进程的共享内存空间。
+
+
+
+
+**S** : 进程的运行状态。D = uninterruptible sleep ，R = running，S = sleeping，T = stopped by job control ，signalt = stopped by debugger during trace，Z = zombie 。
+
+
+
+
+**%CPU** : 进程占用的cpu百分比。
+
+
+
+
+**%MEM** : 进程占用的内存百分比。
+
+
+
+
+**TIME+** : 进程运行所使用的cpu时间。
+
+
+
+
+**COMMAND** : 发起进程所使用的命令。
+
+
+
+
+ 
+
+
+
+
+## 交互式命令
+
+
+
+
+top除了提供动态的视图外，还提供了许多的交互式命令供用户操作。**交互式命令只需要在top界面中直接键入即可，注意命令的大小写**。
+
+
+
+
+**P** : 表示将输出按照%CPU降序排序。默认。
+
+
+
+
+**M** : 表示将输出按照%MEM降序排序。
+
+
+
+
+**T** : 表示将输出按照TIME+降序排序。
+
+
+
+
+**s** : 表示修改top命令的刷新间隔。在键入s后，需要再次键入时间间隔，后敲回车确认。
+
+
+
+
+**k** : 杀死某个进程。在键入k后，需要再次键入进程的PID，后敲回车确认。默认杀死自己。
+
+
+
+
+**q** : 退出top界面。
+
+
+
+
+**1** : 显示或者不显示多个CPU。如果有多个CPU的话，敲1会显示多个CPU的使用情况。
+
+
+
+
+**m** : 显示或者不显示内存、交换分区使用情况，多次键入m可以将内存、交换分区使用情况显示为条状（**图形化的使用情况仅限于CentOS 7系统**）。
+
+
+
+
+
+
+
+# htop命令
+
+
+
+
+htop类似于top命令，但是提供了比top更为强大和方便的功能，比如htop命令可以将进程展现为进程树，并且htop的显示带有色彩，且非常直观。需要注意的是，该工具在epel的仓库中，需要安装该命令需要一个epel的软件仓库。
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/06/htop.jpg)
+
+
+
+
+是不是一目了然，各种命令使用和帮助列的清清楚楚，各种颜色的突出显示也恰到好处，而且支持鼠标的点击操作。
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/06/htop-1.jpg)
+
+
+
+
+支持各种各样的显示风格，满足你的折腾需求。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

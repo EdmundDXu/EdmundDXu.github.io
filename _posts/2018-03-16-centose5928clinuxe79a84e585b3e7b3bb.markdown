@@ -1,0 +1,123 @@
+---
+author: edmund
+comments: true
+date: 2018-03-16 01:49:24+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/03/16/centos%e5%92%8clinux%e7%9a%84%e5%85%b3%e7%b3%bb/
+slug: centos%e5%92%8clinux%e7%9a%84%e5%85%b3%e7%b3%bb
+title: CentOS简介
+wordpress_id: 26
+categories:
+- Linux随笔
+post_format:
+- 日志
+tags:
+- CentOS7
+- linux
+- 发行版
+---
+
+# **What**
+
+
+
+
+在了解CentOS之前，需要来了解一下什么叫Linux 发行版([Linux distribution](https://en.wikipedia.org/wiki/Linux_distribution))，linux 发行版通常为一般用户集成了Linux操作系统内核、大量方便的开源软件，并通过软件包管理程序来管理应用程序的安装升级，最重要的是，一般用户不需要了解如何编译内核、程序，就可以直接将其拿来使用，因为发行版已经帮用户完成了编译的工作，并且配置好了内核、程序的一些配置文件。linux发行版一般通过光盘、镜像发布，用户在安装的时候只需要方便的点击下一步就可以完成该发行版的安装。
+
+
+
+
+根据发行商的不同，发行版的形式也各不相同，每个发行版都会根据自己对linux的理解，对linux的一些文件结构和配置文件参数做一些微调，但是大体上都是相似的，所以用户只需要会一种发行版的使用，其他发行版使用起来也会大同小异。
+
+
+
+
+发行版可以分为商业发行版和社区发行版。
+
+
+
+
+商业发行版：比如[Ubuntu](https://zh.wikipedia.org/wiki/Ubuntu)（[Canonical公司](https://zh.wikipedia.org/wiki/Canonical%E5%85%AC%E5%8F%B8)）、[Fedora](https://zh.wikipedia.org/wiki/Fedora)（[Red Hat](https://zh.wikipedia.org/wiki/Red_Hat)）、[openSUSE](https://zh.wikipedia.org/wiki/OpenSUSE)（[Novell](https://zh.wikipedia.org/wiki/Novell)）和[Mandriva Linux。](https://zh.wikipedia.org/wiki/Mandriva_Linux)
+
+
+
+
+社区发行版：它们由自由软件社区提供支持，如[Debian](https://zh.wikipedia.org/wiki/Debian)和[Gentoo](https://zh.wikipedia.org/wiki/Gentoo_Linux)
+
+
+
+
+也有发行版既不是商业发行版也不是社区发行版，其中最有名的是[Slackware](https://zh.wikipedia.org/wiki/Slackware)。
+
+
+
+
+商业发行版由公司提供服务和技术支持，由于Linux遵循[GPL](https://en.wikipedia.org/wiki/GNU_General_Public_License)协定，所以其发行版也需要遵循[GPL](https://en.wikipedia.org/wiki/GNU_General_Public_License)协定，所以商业发行版的获取是不需要支付费用的，但是如果需要其提供技术和服务支持，比如补丁包的安装，就需要为其支付服务支持费用。
+
+
+
+
+社区发行版由社区维护，社区中的每个人都可以对其进行开发，相当于是由网络中的一批志愿者自发对其进行维护。每个人都可以自由获取其源代码，但是如果你要将其用于生产环境中，如果出了意外，他们不会为其负责。
+
+
+
+
+而CentOS就是一种社区发行版。
+
+
+
+
+
+
+
+# **Why**
+
+
+
+
+为什么要用CentOS？
+
+
+
+
+如果你听过CentOS的话，那你往往也会听过RHEL([RedHat Entreprise Linux](https://en.wikipedia.org/wiki/Red_Hat_Enterprise_Linux)),它是由redhat公司维护的一个企业级Linux发行版，用于为企业提供稳定的服务。由于其是商业发行版，所以对于该发行版后续补丁的二进制文件、以及一些RHEL自行编写的软件，一般用户都无法获得或者使用，必须付费获得其服务支持后才能获取。(虽然RHEL遵循了GPL协定，但是该协定并不强制其提供二进制文件，所以RHEL只提供了补丁的源码，编译安装需要你自行完成)
+
+
+
+
+而CentOS则在这种情况下应运而生，每当RHEL发布一个更新补丁包，CentOS就马上获取其源代码进行编译，并为各种计算机架构平台提供二进制补丁，一般来说在RHEL发布更新后的一个月之内，CentOS的二进制补丁就会发布出来，供所有人免费获取，当然相应的，如果该补丁或者是CentOS系统在生产环境中出现意外，CentOS概不负责。
+
+
+
+
+所以你就可以知道，CentOS实际上是对RHEL的二次编译版本，两者完全兼容，RHEL能够为企业提供稳定的服务，而且版本更新的速度非常慢，一般是18个月发布一个新的版本，所以其内核和软件非常稳定。所以对于那些负担不起RHEL高昂的服务费的公司或者个人，都可以选择使用CentOS。
+
+
+
+
+
+
+
+# **Where**
+
+
+
+
+
+
+
+# **when**
+
+
+
+
+
+
+
+# **how**
+
+
+
+
+
+

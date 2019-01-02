@@ -1,0 +1,681 @@
+---
+author: edmund
+comments: true
+date: 2018-06-21 01:09:38+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/06/21/linux%e4%bb%bb%e5%8a%a1%e8%ae%a1%e5%88%92/
+slug: linux%e4%bb%bb%e5%8a%a1%e8%ae%a1%e5%88%92
+title: Linux任务计划
+wordpress_id: 432
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- at
+- batch
+- crontab
+- sleep
+- 任务计划
+---
+
+# Linux任务计划
+
+
+
+
+在Linux系统运行过程中，我们总是需要定时或者周期性地执行一些任务，比如你希望在晚上12点让系统执行一次全盘扫描，或者每天凌晨3点对数据盘进行备份。这些任务如果需要我们设一个闹钟赶着点过来操作的话，实在是非常麻烦，于是我们可以把这些任务交给任务计划服务来做。通过告知其运行的时间和需要运行的指令，就能够实现任务的计划执行。
+
+
+
+
+在CentOS系统上，常用的定时执行工具有 : at和batch。而常用的周期性执行工具有 crontab。下面我就围绕这两类工具来讲一下Linux的任务计划如何实现。
+
+
+
+
+
+
+
+# at
+
+
+
+
+at命令用于定时执行任务，支持从文件和命令行中读取指令，还支持非常多样化的时间指定方式。需要注意的是，通过at管理的任务的输出会通过邮件发送到用户的邮箱中。
+
+
+
+
+**注意:**
+
+
+
+
+这里的邮箱指的是系统在创建用户时为用户创建的邮箱，位于/var/spool/mail中，每个用户都在该目录下有一个和自己同名的文件，其中存放的就是邮件。
+
+
+
+
+在CentOS 6 及以前的系统中，使用mail命令即可查看邮箱中的邮件。在CentOS 7系统中，需要使用mailx命令查看邮件。
+
+
+
+
+ 
+
+
+
+
+at命令用法 : **at [options] timespec...** 。其中的**options**为命令的选项，**timespec**即为指定的时间。
+
+
+
+
+## 常用选项
+
+
+
+
+**-q queue** : 指定任务的队列，接收a-z和A-Z之间的值，默认为a。任务队列指的是当前任务所处的队列，因为系统上可能会有很多任务，所以为了方便管理，将不同类的任务放到不同的队列中。
+
+
+
+
+**-f file** : 从文件中读取指令。默认从命令行中读取。
+
+
+
+
+**-m** : 即使任务没有结果输出，也向用户发送邮件。
+
+
+
+
+**-M** : 从不向用户发送邮件。
+
+
+
+
+**-t time** : 使用 **[[CC]YY]MMDDhhmm[.ss]** 格式指定执行时间。默认通过timespec参数指定。
+
+
+
+
+**-l** : 显示当前用户的所有任务。如果为root用户，则显示所有用户的任务。等价于atq命令。
+
+
+
+
+**-r** : 删除指定任务号的任务。等价于atrm命令。
+
+
+
+
+**-d** : 删除指定任务号的任务。等价于atrm命令。
+
+
+
+
+**-b** : 等待系统空闲时再执行任务，由atd服务自行判断当前系统的负载情况。等价于batch命令。
+
+
+
+
+**-c** : 查看任务的内容，通过任务号指定任务。
+
+
+
+
+ 
+
+
+
+
+## TIMESPEC（timespec为at命令指定任务运行时间的方式，具体有6种指定时间的方式，下面将分别讲解。）
+
+
+
+
+**1、HH:MM**  通过指定 HOUR: MINUTE 的方式指定时间。如果已经过了指定时间，则表示明天执行，否则就会在今天的指定时间执行。
+
+
+
+
+**2、通过AM和PM的方式和第一种方法结合使用，用于指定上午和下午**。比如10:00am表示上午10点00分。
+
+
+
+
+**3、midnight, noon, or teatime (4pm)**  通过内置关键字指定时间。midnight表示午夜12点，noon表示正午12点，teatime表示下午4点。
+
+
+
+
+**4、MMDD[CC]YY, MM/DD/[CC]YY, DD.MM.[CC]YY or [CC]YY-MM-DD**  通过指定的日期格式指定日期。日期需要跟在时间后面，比如 10am 10012018表示2018年10月1日早上10点。
+
+
+
+
+**5、now + count time-units** 通过相对时间指定时间。time-units包括minutes, hours, days, weeks。比如 now + 3days表示3天后。
+
+
+
+
+**6、在时间后面跟上today或tomorrow** 表示今天执行 或者 明天执行。
+
+
+
+
+
+
+    
+    [root@edu ~]# at now+3minutes    #三分钟后执行任务，默认从命令行接收指令
+    at> cat /etc/issue        #此处为at命令的shell，用于接收指令
+    at> ls /var/log 
+    at> <EOT>                 #在指令全部输入完成后，键入组合键 ctrl+d 结束输入
+    job 10 at Wed Jun 20 14:33:00 2018
+    [root@edu ~]# vim testjob   #编辑一个文件testjob，在其中输入想要执行的指令，每行一个
+    [root@edu ~]# cat testjob   #查看文件内容
+    tail /var/log/messages
+    echo "Hello World"
+    [root@edu ~]# at -f testjob 15:00    #通过-f选项将文件传给at命令
+    job 11 at Wed Jun 20 15:00:00 2018
+    [root@edu ~]# atq                    #查看所有的任务
+    9	Mon Oct  1 10:00:00 2018 a root
+    11	Wed Jun 20 15:00:00 2018 a root
+    [root@edu ~]# at -c 11               #查看任务11的内容
+    #!/bin/sh
+    # atrun uid=0 gid=0
+    # mail root 0
+    umask 22
+    XDG_SESSION_ID=1; export XDG_SESSION_ID
+    HOSTNAME=edu.edmund.com; export HOSTNAME
+    SELINUX_ROLE_REQUESTED=; export SELINUX_ROLE_REQUESTED
+    SHELL=/bin/bash; export SHELL
+    HISTSIZE=1000; export HISTSIZE
+    SSH_CLIENT=10.60.72.28\ 1608\ 22; export SSH_CLIENT
+    SELINUX_USE_CURRENT_RANGE=; export SELINUX_USE_CURRENT_RANGE
+    SSH_TTY=/dev/pts/0; export SSH_TTY
+    USER=root; export USER
+    LS_COLORS=rs=0:di=01\;34:ln=01\;36:mh=00:pi=40\;33:so=01\;35:do=01\;35:bd=40\;33\;01:cd=40\;33\;01:or=40\;31\;01:mi=01\;05\;37\;41:su=37\;41:sg=30\;43:ca=30\;41:tw=30\;42:ow=34\;42:st=37\;44:ex=01\;32:\*.tar=01\;31:\*.tgz=01\;31:\*.arc=01\;31:\*.arj=01\;31:\*.taz=01\;31:\*.lha=01\;31:\*.lz4=01\;31:\*.lzh=01\;31:\*.lzma=01\;31:\*.tlz=01\;31:\*.txz=01\;31:\*.tzo=01\;31:\*.t7z=01\;31:\*.zip=01\;31:\*.z=01\;31:\*.Z=01\;31:\*.dz=01\;31:\*.gz=01\;31:\*.lrz=01\;31:\*.lz=01\;31:\*.lzo=01\;31:\*.xz=01\;31:\*.bz2=01\;31:\*.bz=01\;31:\*.tbz=01\;31:\*.tbz2=01\;31:\*.tz=01\;31:\*.deb=01\;31:\*.rpm=01\;31:\*.jar=01\;31:\*.war=01\;31:\*.ear=01\;31:\*.sar=01\;31:\*.rar=01\;31:\*.alz=01\;31:\*.ace=01\;31:\*.zoo=01\;31:\*.cpio=01\;31:\*.7z=01\;31:\*.rz=01\;31:\*.cab=01\;31:\*.jpg=01\;35:\*.jpeg=01\;35:\*.gif=01\;35:\*.bmp=01\;35:\*.pbm=01\;35:\*.pgm=01\;35:\*.ppm=01\;35:\*.tga=01\;35:\*.xbm=01\;35:\*.xpm=01\;35:\*.tif=01\;35:\*.tiff=01\;35:\*.png=01\;35:\*.svg=01\;35:\*.svgz=01\;35:\*.mng=01\;35:\*.pcx=01\;35:\*.mov=01\;35:\*.mpg=01\;35:\*.mpeg=01\;35:\*.m2v=01\;35:\*.mkv=01\;35:\*.webm=01\;35:\*.ogm=01\;35:\*.mp4=01\;35:\*.m4v=01\;35:\*.mp4v=01\;35:\*.vob=01\;35:\*.qt=01\;35:\*.nuv=01\;35:\*.wmv=01\;35:\*.asf=01\;35:\*.rm=01\;35:\*.rmvb=01\;35:\*.flc=01\;35:\*.avi=01\;35:\*.fli=01\;35:\*.flv=01\;35:\*.gl=01\;35:\*.dl=01\;35:\*.xcf=01\;35:\*.xwd=01\;35:\*.yuv=01\;35:\*.cgm=01\;35:\*.emf=01\;35:\*.axv=01\;35:\*.anx=01\;35:\*.ogv=01\;35:\*.ogx=01\;35:\*.aac=01\;36:\*.au=01\;36:\*.flac=01\;36:\*.mid=01\;36:\*.midi=01\;36:\*.mka=01\;36:\*.mp3=01\;36:\*.mpc=01\;36:\*.ogg=01\;36:\*.ra=01\;36:\*.wav=01\;36:\*.axa=01\;36:\*.oga=01\;36:\*.spx=01\;36:\*.xspf=01\;36:; export LS_COLORS
+    MAIL=/var/spool/mail/root; export MAIL
+    PATH=/usr/local/apache2/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/bin; export PATH
+    PWD=/root; export PWD
+    LANG=en_US.UTF-8; export LANG
+    SELINUX_LEVEL_REQUESTED=; export SELINUX_LEVEL_REQUESTED
+    HISTCONTROL=ignoredups; export HISTCONTROL
+    SHLVL=1; export SHLVL
+    HOME=/root; export HOME
+    LOGNAME=root; export LOGNAME
+    CVS_RSH=ssh; export CVS_RSH
+    SSH_CONNECTION=10.60.72.28\ 1608\ 10.60.72.190\ 22; export SSH_CONNECTION
+    LESSOPEN=\|\|/usr/bin/lesspipe.sh\ %s; export LESSOPEN
+    XDG_RUNTIME_DIR=/run/user/0; export XDG_RUNTIME_DIR
+    OLDPWD=/etc/yum.repos.d; export OLDPWD
+    cd /root || {
+    	 echo 'Execution directory inaccessible' >&2
+    	 exit 1
+    }
+    ${SHELL:-/bin/sh} << 'marcinDELIMITER3e980213'
+    tail /var/log/messages
+    echo "Hello World"
+    
+    marcinDELIMITER3e980213
+    
+
+
+
+
+
+
+
+
+
+
+# crontab
+
+
+
+
+crontab是一个管理cron任务的命令，cron任务由crond进程监控执行，cron任务允许定义一个周期性地时间和复杂的指令，然后在规定的时间执行这些指令，一般称保存cron任务的文件为crontab文件。比如每天凌晨3点执行tar命令为数据盘做备份。
+
+
+
+
+每一个用户都可以定义自己的cron任务，并且每个用户的cron任务都是分开存放的，位于 **/var/spool/cron** 目录下，以用户名作为文件名。比如root用户的cron任务文件为/var/spool/cron/root 。
+
+
+
+
+和at类似，在计划任务执行完后，执行结果会被发送到相应用户的邮箱中。
+
+
+
+
+和crontab工具相关的有三个软件包，首先我们来查看一下这三个软件包。
+
+
+
+    
+    [root@edu ~]# rpm -qa | grep cron   #可以看见和cron相关的有三个软件包
+    cronie-1.4.11-17.el7.x86_64
+    cronie-anacron-1.4.11-17.el7.x86_64
+    crontabs-1.11-6.20121102git.el7.noarch
+    [root@edu ~]# rpm -qi cronie        #其中cronie提供的是crond服务和相关的工具
+    Name        : cronie
+    Version     : 1.4.11
+    Release     : 17.el7
+    Architecture: x86_64
+    Install Date: Thu 19 Apr 2018 06:47:35 PM CST
+    Group       : System Environment/Base
+    Size        : 220388
+    License     : MIT and BSD and ISC and GPLv2+
+    Signature   : RSA/SHA256, Thu 10 Aug 2017 11:27:51 PM CST, Key ID 24c6a8a7f4a80eb5
+    Source RPM  : cronie-1.4.11-17.el7.src.rpm
+    Build Date  : Thu 03 Aug 2017 11:33:54 PM CST
+    Build Host  : c1bm.rdu2.centos.org
+    Relocations : (not relocatable)
+    Packager    : CentOS BuildSystem <http://bugs.centos.org>
+    Vendor      : CentOS
+    URL         : https://fedorahosted.org/cronie
+    Summary     : Cron daemon for executing programs at set times
+    Description :
+    Cronie contains the standard UNIX daemon crond that runs specified programs at
+    scheduled times and related tools. It is a fork of the original vixie-cron and
+    has security and configuration enhancements like the ability to use pam and
+    SELinux.
+    [root@edu ~]# rpm -qi cronie-anacron          #cronie-anacron提供的是crond服务的拓展功能，用于在cron任务由于各种原因（比如断电）没能按时执行时，找一个延后的时间将其执行
+    Name        : cronie-anacron
+    Version     : 1.4.11
+    Release     : 17.el7
+    Architecture: x86_64
+    Install Date: Thu 19 Apr 2018 06:47:34 PM CST
+    Group       : System Environment/Base
+    Size        : 41611
+    License     : MIT and BSD and ISC and GPLv2+
+    Signature   : RSA/SHA256, Thu 10 Aug 2017 11:27:59 PM CST, Key ID 24c6a8a7f4a80eb5
+    Source RPM  : cronie-1.4.11-17.el7.src.rpm
+    Build Date  : Thu 03 Aug 2017 11:33:54 PM CST
+    Build Host  : c1bm.rdu2.centos.org
+    Relocations : (not relocatable)
+    Packager    : CentOS BuildSystem <http://bugs.centos.org>
+    Vendor      : CentOS
+    URL         : https://fedorahosted.org/cronie
+    Summary     : Utility for running regular jobs
+    Description :
+    Anacron is part of cronie that is used for running jobs with regular
+    periodicity which do not have exact time of day of execution.
+    
+    The default settings of anacron execute the daily, weekly, and monthly
+    jobs, but anacron allows setting arbitrary periodicity of jobs.
+    
+    Using anacron allows running the periodic jobs even if the system is often
+    powered off and it also allows randomizing the time of the job execution
+    for better utilization of resources shared among multiple systems.
+    [root@edu ~]# rpm -qi crontab                     #crontab提供的是一些脚本和cron任务，用于为系统提供常规的cron任务
+    package crontab is not installed
+    You have mail in /var/spool/mail/root
+    [root@edu ~]# rpm -qi crontabs
+    Name        : crontabs
+    Version     : 1.11
+    Release     : 6.20121102git.el7
+    Architecture: noarch
+    Install Date: Thu 19 Apr 2018 06:47:35 PM CST
+    Group       : System Environment/Base
+    Size        : 3700
+    License     : Public Domain and GPLv2
+    Signature   : RSA/SHA256, Fri 04 Jul 2014 09:02:43 AM CST, Key ID 24c6a8a7f4a80eb5
+    Source RPM  : crontabs-1.11-6.20121102git.el7.src.rpm
+    Build Date  : Tue 10 Jun 2014 06:14:31 AM CST
+    Build Host  : worker1.bsys.centos.org
+    Relocations : (not relocatable)
+    Packager    : CentOS BuildSystem <http://bugs.centos.org>
+    Vendor      : CentOS
+    URL         : https://fedorahosted.org/crontabs
+    Summary     : Root crontab files used to schedule the execution of programs
+    Description :
+    This package is used by Fedora mainly for executing files by cron.
+    
+    The crontabs package contains root crontab files and directories.
+    You will need to install cron daemon to run the jobs from the crontabs.
+    The cron daemon such as cronie or fcron checks the crontab files to
+    see when particular commands are scheduled to be executed.  If commands
+    are scheduled, it executes them.
+    
+    Crontabs handles a basic system function, so it should be installed on
+    your system.
+    
+
+
+
+
+
+
+
+了解了cron服务的大致组成后，我们需要确保已经启动了crond进程，否则周期任务将无法执行。
+
+
+
+    
+    [root@edu ~]# systemctl status crond    #该命令适用于CentOS 7系统，对于CentOS 6及以前的系统，需要使用system crond status命令。
+    ● crond.service - Command Scheduler
+       Loaded: loaded (/usr/lib/systemd/system/crond.service; enabled; vendor preset: enabled)
+       Active: active (running) since Wed 2018-06-20 08:03:02 CST; 6h ago              #active(running)表示crond服务正常运行中
+     Main PID: 615 (crond)
+       CGroup: /system.slice/crond.service
+               └─615 /usr/sbin/crond -n
+    
+    Jun 20 08:03:02 edu.edmund.com systemd[1]: Started Command Scheduler.
+    Jun 20 08:03:02 edu.edmund.com systemd[1]: Starting Command Scheduler...
+    Jun 20 08:03:02 edu.edmund.com crond[615]: (CRON) INFO (RANDOM_DELAY will be scaled with fa...d.)
+    Jun 20 08:03:02 edu.edmund.com crond[615]: (CRON) INFO (running with inotify support)
+    Hint: Some lines were ellipsized, use -l to show in full.
+    
+
+
+
+
+
+
+
+## crontab文件的语法
+
+
+
+
+在crontab文件中，每行都定义了一个cron任务，每行有6个字段。如下所示 : 
+
+
+
+
+** .---------------- minute (0 - 59)**  
+
+** | .------------- hour (0 - 23)**  
+
+** | | .---------- day of month (1 - 31)**  
+
+** | | | .------- month (1 - 12) OR jan,feb,mar,apr ...**  
+
+** | | | | .---- day of week (0 - 6) (Sunday=0 or 7) OR sun,mon,tue,wed,thu,fri,sat**  
+
+** | | | | |**  
+
+** * * * * *  command to be executed**
+
+
+
+
+第一个字段表示分钟，取值范围为0-59。
+
+
+
+
+第二个字段表示小时，取值范围为0-23。
+
+
+
+
+第三个字段表示天，取值范围为1-31。
+
+
+
+
+第四个字段表示月，取值范围为1-12。
+
+
+
+
+第五个字段表示星期几，取值范围为0-7。（其中0和7都代表星期天）
+
+
+
+
+第六个字段表示需要执行的命令。如果命令很复杂可以写在一个脚本中，此处执行脚本即可。
+
+
+
+
+
+
+
+前5个字段用于指定执行周期，而这5个字段除了可以填写取值范围内的值之外，还有一些特殊的写法。
+
+
+
+
+***** : 表示取值范围内的所有连续值。
+
+
+
+
+**n-m** : 表示从n到m内的所有连续值。
+
+
+
+
+**x1,x2,x3...** : 表示离散的取值x1,x2,x3...。
+
+
+
+
+***/x** : 表示取值范围内的所有以x为步长的值。比如在第一个字段使用*/3表示所有能够被3整除的分钟数 : 第3,6,9,12...分钟。
+
+
+
+
+**n-m/x** : 类似于*/x，只不过取值范围缩小到n-m。
+
+
+
+
+
+
+
+## 范例
+
+
+
+
+1、在工作日的晚上十点钟打印一句话。
+
+
+
+
+0 22 * * 1-5 echo"It's 10pm" 
+
+
+
+
+2、在每天的偶数小时的23分打印一句话。
+
+
+
+
+23 0-23/2 * * * echo "run 23 minutes after midn, 2am, 4am ..., everyday" 
+
+
+
+
+3、在每个周日的4点05分打印一句话。
+
+
+
+
+5 4 * * 7 echo "run at 5 after 4 every sunday" 
+
+
+
+
+**注意:**
+
+
+
+
+首先，我们需要知道cron任务分为系统任务和用户任务，由用户在/var/spool/cron中提交的任务即为用户任务，而系统任务一般写在/etc/crontab文件中。cron用户任务和cron系统任务语法基本一致，但是和cron用户任务不同的是，cron系统任务有7个字段，也就是在cron用户任务的第5个字段和第6个字段之间有一个USERNAME字段，这个字段指明了这个cron系统任务由哪个用户的身份来执行。
+
+
+
+
+
+
+
+## crontab命令的用法
+
+
+
+
+**crontab [options]**
+
+
+
+
+### 常用选项
+
+
+
+
+**-u** : 指定修改哪个用户的crontab文件。如果不指定则默认修改自己的。需要注意的是一般只有root用户有权限修改别人的crontab文件。
+
+
+
+
+**-l** : 打印crontab文件中的所有的cron任务，默认打印当前用户的crontab文件。可以通过-u指定用户。
+
+
+
+
+**-r** : 删除crontab文件，默认删除当前用户的crontab文件。可以通过-u指定用户。
+
+
+
+
+**-e** : 编辑crontab文件，该选项会打开一个vim编辑器去编辑/etc/spool/cron/USERNAME文件，并且在保存时会检查语法。默认编辑当前用户的crontab文件。可以通过-u指定用户。
+
+
+
+
+**-i** : 和-r选项配合使用，用于在删除crontab文件之前做确认，避免用户误删。
+
+
+
+
+ 
+
+
+
+    
+    [root@edu ~]# crontab -l   #查看当前用户的crontab文件，发现没有crontab文件
+    no crontab for root
+    [root@edu ~]# crontab -e   #编辑当前用户的crontab文件
+    no crontab for root - using an empty one
+    crontab: installing new crontab
+    [root@edu ~]# crontab -l   #查看当前的crontab文件内容
+    0 22 * * 1-5 echo"It's 10pm" 
+    5 4 * * 7 echo "run at 5 after 4 every sunday"
+    [root@edu ~]# crontab -u edmund -e    #编辑edmund用户的crontab文件
+    no crontab for edmund - using an empty one
+    crontab: installing new crontab
+    [root@edu ~]# crontab -u edmund -l    #查看edmund用户的crontab文件内容
+    23 0-23/2 * * * echo "run 23 minutes after midn, 2am, 4am ..., everyday" 
+    [root@edu ~]# crontab -u edmund -r -i #删除edmund用户的crontab文件，并在删除之前做提示
+    crontab: really delete edmund's crontab? y
+    [root@edu ~]# crontab -u edmund -l    #查看edmund用户的crontab文件，已经成功删除
+    no crontab for edmund
+    
+
+
+
+
+
+
+
+## crontab练习
+
+
+
+
+1、每4小时备份一次/etc/目录至/backup目录中，保存的文件名称格式为"etc-yyyy-mm-dd-HH.tar.xz"。
+
+
+
+
+0 */4 * * * /usr/bin/tar -cJf /backup/etc-`/usr/bin/date +\%Y-\%m-\%d-\%H`.tar.xz /etc
+
+
+
+
+2、每周2,4,7备份/var/log/messages文件至/logs目录中，文件名形如"messages-yyyymmdd"。
+
+
+
+
+0 3 * * 2,4,7 cp -a /var/log/messages /logs/message-`/usr/bin/date +\%Y\%m\%d`
+
+
+
+
+3、每两小时取出当前系统/proc/meminfo文件中以S或M开头的信息追加至/tmp/meminfo.txt文件中。
+
+
+
+
+0 */2 * * * /usr/bin/grep "^[S|M].*" /proc/meminfo >> /tmp/meminfo.txt
+
+
+
+
+4、工作日时间内，每小时执行一次"ip addr show"命令。
+
+
+
+
+0 * * * 1-5 /usr/sbin/ip addr show
+
+
+
+
+**注意1 : 在crontab中，由于 % 在里面有特殊用途，所以如果命令中出现了 % ,则需要将其转义。对于单引号中的 % ,则无需转义。**
+
+
+
+
+**注意2 : 在crond进程运行时，由于crond使用的环境变量覆盖到的目录比较少，用户环境变量中存在的目录，在crond的环境变量中不一定存在，所以在写cron任务中的命令时，最好使用命令的绝对路径，避免crond找不到该命令。**
+
+
+
+
+
+
+
+# sleep命令
+
+
+
+
+虽然crontab非常强大，可以自定义各种时间周期，但是需要注意的是crontab并不能精确到秒，所以如果需要秒级的操作，就要用到sleep命令了。
+
+
+
+
+sleep命令的作用正如其名，让运行这个命令的进程进入睡眠，也就是说让进程暂停指定的时间。利用这个命令，我们可以实现任意时间的等待。
+
+
+
+
+这个命令的用法也很简单 : **sleep NUMBER[SUFFIX]... **即可。NUMBER为数值，而SUFFIX为单位，可用的单位包括 : **s**,**m**,**h**,**d**，其中s表示秒，m表示分，h表示小时，d表示天，**默认单位为秒（s）**。例如 sleep 5 表示让执行这个命令的进程暂停5秒钟，sleep 5m 则表示暂停5分钟。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

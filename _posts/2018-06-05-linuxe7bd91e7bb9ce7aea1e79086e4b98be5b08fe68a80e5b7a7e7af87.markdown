@@ -1,0 +1,827 @@
+---
+author: edmund
+comments: true
+date: 2018-06-05 12:47:11+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/06/05/linux%e7%bd%91%e7%bb%9c%e7%ae%a1%e7%90%86%e4%b9%8b%e5%b0%8f%e6%8a%80%e5%b7%a7%e7%af%87/
+slug: linux%e7%bd%91%e7%bb%9c%e7%ae%a1%e7%90%86%e4%b9%8b%e5%b0%8f%e6%8a%80%e5%b7%a7%e7%af%87
+title: Linux网络管理之小技巧篇
+wordpress_id: 375
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- CentOS 6
+- CentOS7
+- linux
+- 命令
+- 命令帮助
+- 小技巧
+- 网络
+---
+
+# 一、为网络接口配置多个协议地址
+
+
+
+
+有时候我们会需要为一块网卡配置多个地址，比如在负载均衡服务器上，这时候我们就需要使用一些方法为网卡配置额外的地址。
+
+
+
+
+## 方法1、使用ifconfig命令
+
+
+
+
+ifconfig命令不能通过添加地址的方式为一个接口添加多个地址，但是可以通过接口别名的方式为接口配置多个地址。比如eth0接口，我可以为其创建一个名为eth0:0的别名，还可以继续创建eth0:1,然后为其添加地址，由于这些别名都是同一个网路接口的别名，所以相当于一块网卡有了多个地址。
+
+
+
+    
+    [root@edu ~]# ifconfig ens33:0 10.60.72.188/24 up  #为ens33接口添加别名ens33:0，并为其添加一个地址同时将该别名接口启动
+    [root@edu ~]# ifconfig  #可以看到多出了一个ens33:0
+    ens33: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+            inet 10.60.72.190  netmask 255.255.255.0  broadcast 10.60.72.255
+            inet6 fe80::20c:29ff:fedd:b3ae  prefixlen 64  scopeid 0x20<link>
+            ether 00:0c:29:dd:b3:ae  txqueuelen 1000  (Ethernet)
+            RX packets 3128  bytes 3614950 (3.4 MiB)
+            RX errors 0  dropped 0  overruns 0  frame 0
+            TX packets 247  bytes 64154 (62.6 KiB)
+            TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+    
+    ens33:0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+            inet 10.60.72.188  netmask 255.255.255.0  broadcast 10.60.72.255
+            ether 00:0c:29:dd:b3:ae  txqueuelen 1000  (Ethernet)
+    
+    lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+            inet 127.0.0.1  netmask 255.0.0.0
+            inet6 ::1  prefixlen 128  scopeid 0x10<host>
+            loop  txqueuelen 1  (Local Loopback)
+            RX packets 0  bytes 0 (0.0 B)
+            RX errors 0  dropped 0  overruns 0  frame 0
+            TX packets 0  bytes 0 (0.0 B)
+            TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+    
+    [root@edu ~]# ping 10.60.72.188  #使用ping命令测试，发现该地址可用
+    PING 10.60.72.188 (10.60.72.188) 56(84) bytes of data.
+    64 bytes from 10.60.72.188: icmp_seq=1 ttl=64 time=0.060 ms
+    ^C
+    --- 10.60.72.188 ping statistics ---
+    1 packets transmitted, 1 received, 0% packet loss, time 0ms
+    rtt min/avg/max/mdev = 0.060/0.060/0.060/0.000 ms
+    
+
+
+
+
+ 
+
+
+
+
+## 方法2、使用ip命令
+
+
+
+
+ifconfig命令由于是较老的命令了，所以在实际使用上会有些麻烦和问题，而ip命令因为是站在了巨人的肩膀上，所以对于一些网络配置的处理上就要容易很多。
+
+
+
+
+这里使用ip命令配置接口的多个地址相当容易，你甚至不需要做任何额外的配置，只需要使用ip命令普通的为其添加地址即可，ip命令会将额外的地址一并添加到这个接口中。
+
+
+
+    
+    [root@edu ~]# ip addr #首先查看ens33接口的地址，发现只有一个10.60.72.190
+    1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+        link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+        inet 127.0.0.1/8 scope host lo
+           valid_lft forever preferred_lft forever
+        inet6 ::1/128 scope host 
+           valid_lft forever preferred_lft forever
+    3: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+        link/ether 00:0c:29:dd:b3:ae brd ff:ff:ff:ff:ff:ff
+        inet 10.60.72.190/24 brd 10.60.72.255 scope global ens33
+           valid_lft forever preferred_lft forever
+        inet6 fe80::20c:29ff:fedd:b3ae/64 scope link 
+           valid_lft forever preferred_lft forever
+    [root@edu ~]# ip addr add 192.168.199.100/24 dev ens33  #使用ip命令为ens33接口添加一个192.168.199.100地址
+    [root@edu ~]# ip addr  #再次查看ens33接口，发现多出了一个地址
+    1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+        link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+        inet 127.0.0.1/8 scope host lo
+           valid_lft forever preferred_lft forever
+        inet6 ::1/128 scope host 
+           valid_lft forever preferred_lft forever
+    3: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+        link/ether 00:0c:29:dd:b3:ae brd ff:ff:ff:ff:ff:ff
+        inet 10.60.72.190/24 brd 10.60.72.255 scope global ens33
+           valid_lft forever preferred_lft forever
+        inet 192.168.199.100/24 scope global ens33
+           valid_lft forever preferred_lft forever
+        inet6 fe80::20c:29ff:fedd:b3ae/64 scope link 
+           valid_lft forever preferred_lft forever
+    [root@edu ~]# ping 192.168.199.100  #使用ping命令测试该地址，发现可用
+    PING 192.168.199.100 (192.168.199.100) 56(84) bytes of data.
+    64 bytes from 192.168.199.100: icmp_seq=1 ttl=64 time=0.080 ms
+    ^C
+    --- 192.168.199.100 ping statistics ---
+    1 packets transmitted, 1 received, 0% packet loss, time 0ms
+    rtt min/avg/max/mdev = 0.080/0.080/0.080/0.000 ms
+    
+
+
+
+
+ 
+
+
+
+
+## 方法3、编辑配置文件ifcfg
+
+
+
+
+同样的，使用命令能够为接口配置多个地址，那么使用配置文件也可以实现。我们只需要创建一个以接口别名作为接口名的配置文件即可。比如创建一个ifcfg文件叫做ifcfg-eth0:0，表示为eth0:0这个别名接口配置。需要注意的是，别名接口无法使用DHCP为其动态分配地址，因为别名接口与接口使用的是同一块网卡，拥有相同的MAC和UUID。
+
+
+
+    
+    [root@edu ~]# cd /etc/sysconfig/network-scripts/  #进入网络配置脚本的目录
+    [root@edu network-scripts]# cp ifcfg-ens33 ifcfg-ens33:0  #直接使用ens33的配置文件创建ens33:0的配置文件
+    [root@edu network-scripts]# vim ifcfg-ens33:0 #修改ens33:0的配置文件，将其中的HWADDR、UUID等唯一表示一个设备的字段删除，避免出现冲突。GATEWAY和DNS一般也不需要，也可以删除。然后修改IP地址
+    [root@edu network-scripts]# cat ifcfg-ens33:0 #查看配置文件内容
+    TYPE="Ethernet"
+    BOOTPROTO="static"
+    IPV4_FAILURE_FATAL="no"
+    NAME="ens33:0"
+    DEVICE="ens33:0"
+    ONBOOT="yes"
+    IPADDR="10.60.72.188"
+    PREFIX="24"
+    DNS1="10.60.72.1"
+    [root@edu network-scripts]# service network restart  #修改完成后重启网卡，使配置文件生效
+    Restarting network (via systemctl):                        [  OK  ]
+    [root@edu network-scripts]# ip addr  #此时再次查看ens33接口，发现已经有了两个ip地址
+    1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+        link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+        inet 127.0.0.1/8 scope host lo
+           valid_lft forever preferred_lft forever
+        inet6 ::1/128 scope host 
+           valid_lft forever preferred_lft forever
+    3: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+        link/ether 00:0c:29:dd:b3:ae brd ff:ff:ff:ff:ff:ff
+        inet 10.60.72.190/24 brd 10.60.72.255 scope global ens33
+           valid_lft forever preferred_lft forever
+        inet 10.60.72.188/24 brd 10.60.72.255 scope global secondary ens33:0
+           valid_lft forever preferred_lft forever
+        inet6 fe80::20c:29ff:fedd:b3ae/64 scope link 
+           valid_lft forever preferred_lft forever
+    
+
+
+
+
+
+
+
+# 二、使用tui工具配置网络属性
+
+
+
+
+tui（**Text User Interface**）,即使用文本方式实现的图形界面，可以在shell终端下使用而不需要图形化组件。由于是使用类似图形化的配置方式，所以配置过程显得会更人性化一些。需要注意的是，tui工具在保存修改后会直接将改动写入配置文件，需要重启网卡后才能生效。
+
+
+
+
+在CentOS 6中，tui工具是**system-config-network-tui**，打开后就会出现如下这种界面：
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/06/tui.jpg)
+
+
+
+
+接下来只要使用回车和ESC即可来回切换，使用空格键选择，即可轻松完成配置。
+
+
+
+
+在CentOS 7中，tui工具是**nmtui**，打开之后就出现如下所示的界面 : 
+
+
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/06/tui7.jpg)
+
+
+
+
+同样跟着选项提示走即可完成配置。
+
+
+
+
+ 
+
+
+
+
+# 三、配置主机名（hostname）
+
+
+
+
+主机名可以使用hostname命令直接配置，hostname HOSTNAME即可。
+
+
+
+    
+    [root@edu ~]# hostname #hostname不加任何参数即为查看主机名
+    edu.edmund.com
+    [root@edu ~]# hostname edu.edmundx.com  #hostname后面跟上参数表示修改主机名
+    [root@edu ~]# hostname  #查看主机名，发现已经修改成功
+    edu.edmundx.com
+    
+
+
+
+
+ 
+
+
+
+
+在CentOS 7中，有一个新的工具hostnamectl，也可以用来修改主机名，当然，这个工具还有其他的功能。
+
+
+
+    
+    [root@edu network-scripts]# hostnamectl status  #使用hostnamectl status命令查看主机名，可以发现除了主机名，这个命令还打印出了其他有用的信息
+       Static hostname: edu.edmund.com
+             Icon name: computer-vm
+               Chassis: vm
+            Machine ID: 49798cc5b5b44e7c804689911ee41905
+               Boot ID: 58635c120349451aa350867b71e126ba
+        Virtualization: vmware
+      Operating System: CentOS Linux 7 (Core)
+           CPE OS Name: cpe:/o:centos:centos:7
+                Kernel: Linux 3.10.0-693.el7.x86_64
+          Architecture: x86-64
+    [root@edu network-scripts]# hostnamectl set-hostname edu.edmundx.com  #使用hostnamectl set-hostname命令设置主机名
+    [root@edu network-scripts]# hostnamectl status #再次查看，发现已经修改成功
+       Static hostname: edu.edmundx.com
+             Icon name: computer-vm
+               Chassis: vm
+            Machine ID: 49798cc5b5b44e7c804689911ee41905
+               Boot ID: 58635c120349451aa350867b71e126ba
+        Virtualization: vmware
+      Operating System: CentOS Linux 7 (Core)
+           CPE OS Name: cpe:/o:centos:centos:7
+                Kernel: Linux 3.10.0-693.el7.x86_64
+          Architecture: x86-64
+    
+
+
+
+
+
+
+
+同样的，主机名也可以在配置文件中修改。
+
+
+
+
+在CentOS 6中，主机名在**/etc/sysconfig/network**文件中定义，在该文件中，插入一行HOSTNAME=xxx，然后重启主机即可生效。
+
+
+
+
+在CentOS 7中，主机名在**/etc/hostname**文件中定义，在该文件中直接写入一行主机名即可。需要注意的是，如果使用了hostnamectl工具修改的主机名，那么配置文件中的主机名也一并会被修改。
+
+
+
+    
+    [root@edu ~]# cat /etc/hostname #CentOS 7系统中的/etc/hostname文件，只有一行内容，该内容即为主机名
+    edu.edmund.com
+
+
+
+
+ 
+
+
+
+
+# 四、在CentOS 7 中使用nmcli进行简单的网络配置管理
+
+
+
+
+在CentOS 7中，除了用于替代ifconfig命令的ip命令外，还引入了NetworkManager进行网络的管理，NetworkManager是能够进行网络动态管理和配置的一个守护进程，并且其仍然支持传统的ifcfg配置文件。而nmcli则是用于与NetworkManager交互的命令行工具。需要注意的是，nmcli工具的功能非常强大，但是在这里我们只是使用它进行一些简单的网络配置，而且在正常使用中，只需要使用这些简单的配置参数就够了。
+
+
+
+
+
+
+
+## 使用nmcli管理网络接口设备
+
+
+
+
+**nmcli device COMMAND**
+
+
+
+
+**常用COMMAND**
+
+
+
+
+**status** : 打印接口设备的状态信息。
+
+
+
+
+**show [DEVICE]** : 显示接口设备的详细信息。如果不传入参数，则默认显示所有设备。注意，该信息为接口的当前信息，而不是配置文件中的信息。
+
+
+
+
+**modify IFNAME [+|-]SETTING.PROPERITY VALUE** : 修改接口设备的设置属性，如IPV4地址，DNS服务器指向，网关地址等。IFNAME表示设备名称，SETTING和PROPERITY表示某个属性，而VALUE表示给该属性传递的值，SETTING和PROPERITY可以去翻阅文档查看。+|- 表示添加和删除某个属性，如果不指定则默认为添加。使用该命令进行的修改是立即生效的，但是会在下次设备启动时失效，即不会去修改配置文件。
+
+
+
+
+**disconnect IFNAME** : 断开对某个设备的连接。
+
+
+
+
+**connect IFNAME** : 连接至指定设备。
+
+
+
+
+**reapply IFNAME** : 尝试为接口使用新的连接配置。连接配置使用nucli connection命令生成，可以是持久的配置，也可以是临时的配置。
+
+
+
+
+ 
+
+
+
+
+**常用SETTING和PROPERITY**
+
+
+
+
+**ipv4.addresses | ip4** : ipv4协议地址。
+
+
+
+
+**ipv4.gateway | gw4** : ipv4协议的网关。
+
+
+
+
+**ipv4.dns** : ipv4协议的DNS服务器指向。
+
+
+
+
+**ipv4.routes** : 配置ipv4协议的静态路由。
+
+
+
+    
+    [root@edu network-scripts]# nmcli device status  #通过status命令查看接口的状态，发现有connected、disconnected和unmanaged。其中unmanaged表示该接口不受NM管理。
+    DEVICE  TYPE      STATE         CONNECTION 
+    ens33   ethernet  connected     ens33      
+    ens37   ethernet  disconnected  --         
+    lo      loopback  unmanaged     --         
+    [root@edu network-scripts]# nmcli device show ens33   #查看接口ens33的详细信息
+    GENERAL.DEVICE:                         ens33         #接口设备名
+    GENERAL.TYPE:                           ethernet      #接口设备类型
+    GENERAL.HWADDR:                         00:0C:29:DD:B3:AE   #接口的MAC地址
+    GENERAL.MTU:                            1500          #接口的MTU
+    GENERAL.STATE:                          100 (connected)   #接口的连接状态
+    GENERAL.CONNECTION:                     ens33         #接口的连接id
+    GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/ActiveConnection/1
+    WIRED-PROPERTIES.CARRIER:               on
+    IP4.ADDRESS[1]:                         10.60.72.190/24
+    IP4.GATEWAY:                            10.60.72.1
+    IP4.DNS[1]:                             10.60.72.1
+    IP6.ADDRESS[1]:                         fe80::20c:29ff:fedd:b3ae/64
+    IP6.GATEWAY:                            fe80::3e8a:b0ff:fe92:f5c1
+    [root@edu network-scripts]# nmcli device connect ens37   #尝试使用connect连接ens37接口，连接成功，并且设备ens37被激活。
+    Device 'ens37' successfully activated with '22ef659d-bf33-3ed2-a13d-8763ba0238d9'.
+    [root@edu network-scripts]# nmcli device status          #再次查看接口状态，发现ens37接口成为连接状态
+    DEVICE  TYPE      STATE      CONNECTION 
+    ens33   ethernet  connected  ens33      
+    ens37   ethernet  connected  ens37      
+    lo      loopback  unmanaged  --         
+    [root@edu network-scripts]# nmcli device show ens37      #查看ens37接口的详细信息
+    GENERAL.DEVICE:                         ens37
+    GENERAL.TYPE:                           ethernet
+    GENERAL.HWADDR:                         00:0C:29:DD:B3:B8
+    GENERAL.MTU:                            1500
+    GENERAL.STATE:                          100 (connected)
+    GENERAL.CONNECTION:                     ens37
+    GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/ActiveConnection/4
+    WIRED-PROPERTIES.CARRIER:               on
+    IP4.ADDRESS[1]:                         10.60.72.188/24
+    IP4.GATEWAY:                            --
+    IP6.ADDRESS[1]:                         fe80::20c:29ff:fedd:b3b8/64
+    IP6.GATEWAY:                            fe80::3e8a:b0ff:fe92:f5c1
+    [root@edu network-scripts]# nmcli device modify ens37 ip4 10.60.72.199/24 gw4 10.60.72.1   #使用modify命令修改ens37的信息，ip4表示ipv4地址，gw4表示ipv4的网关
+    Connection successfully reapplied to device 'ens37'.
+    [root@edu network-scripts]# nmcli dev show ens37      #这里可以发现device被缩写成了dev，这是没有问题的，其中绝大多数指令是可以缩写的，dev甚至还可以缩写成d，show缩写成s。这里再次查看接口信息，发现已经配置成功了。
+    GENERAL.DEVICE:                         ens37
+    GENERAL.TYPE:                           ethernet
+    GENERAL.HWADDR:                         00:0C:29:DD:B3:B8
+    GENERAL.MTU:                            1500
+    GENERAL.STATE:                          100 (connected)
+    GENERAL.CONNECTION:                     ens37
+    GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/ActiveConnection/4
+    WIRED-PROPERTIES.CARRIER:               on
+    IP4.ADDRESS[1]:                         10.60.72.188/24
+    IP4.ADDRESS[2]:                         10.60.72.199/24
+    IP4.GATEWAY:                            10.60.72.1
+    IP6.ADDRESS[1]:                         fe80::20c:29ff:fedd:b3b8/64
+    IP6.GATEWAY:                            --
+    [root@edu network-scripts]# nmcli dev disconnect ens37   #断开ens37设备的连接
+    Device 'ens37' successfully disconnected.
+    [root@edu network-scripts]# nmcli dev show               #再次查看ens37设备的状态，发现已经处于断开连接的状态，原本的连接信息全部都消失了。
+    GENERAL.DEVICE:                         ens33
+    GENERAL.TYPE:                           ethernet
+    GENERAL.HWADDR:                         00:0C:29:DD:B3:AE
+    GENERAL.MTU:                            1500
+    GENERAL.STATE:                          100 (connected)
+    GENERAL.CONNECTION:                     ens33
+    GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/ActiveConnection/1
+    WIRED-PROPERTIES.CARRIER:               on
+    IP4.ADDRESS[1]:                         10.60.72.190/24
+    IP4.GATEWAY:                            10.60.72.1
+    IP4.DNS[1]:                             10.60.72.1
+    IP6.ADDRESS[1]:                         fe80::20c:29ff:fedd:b3ae/64
+    IP6.GATEWAY:                            fe80::3e8a:b0ff:fe92:f5c1
+    
+    GENERAL.DEVICE:                         ens37
+    GENERAL.TYPE:                           ethernet
+    GENERAL.HWADDR:                         00:0C:29:DD:B3:B8
+    GENERAL.MTU:                            1500
+    GENERAL.STATE:                          30 (disconnected)
+    GENERAL.CONNECTION:                     --
+    GENERAL.CON-PATH:                       --
+    WIRED-PROPERTIES.CARRIER:               on
+    
+    GENERAL.DEVICE:                         lo
+    GENERAL.TYPE:                           loopback
+    GENERAL.HWADDR:                         00:00:00:00:00:00
+    GENERAL.MTU:                            65536
+    GENERAL.STATE:                          10 (unmanaged)
+    GENERAL.CONNECTION:                     --
+    GENERAL.CON-PATH:                       --
+    IP4.ADDRESS[1]:                         127.0.0.1/8
+    IP4.GATEWAY:                            --
+    IP6.ADDRESS[1]:                         ::1/128
+    IP6.GATEWAY:                            --
+    [root@edu network-scripts]# nmcli dev status
+    DEVICE  TYPE      STATE         CONNECTION 
+    ens33   ethernet  connected     ens33      
+    ens37   ethernet  disconnected  --         
+    lo      loopback  unmanaged     --  
+
+
+
+
+ 
+
+
+
+
+ 
+
+
+
+
+## 使用nmcli管理网络配置
+
+
+
+
+**nmcli connection COMMAND**
+
+
+
+
+NetworkManager将网络连接的配置存储为connections，所谓connections即为保存有数据链路层、IP层等信息的数据集合。所以connection命令对连接进行的配置实际上是对配置文件的修改，所以在使用connection对连接进行配置后，需要重新读取配置文件或者重新激活设备才能使新配置生效。
+
+
+
+
+
+
+
+**常用的COMMAND**
+
+
+
+
+**show [--active] [CONN_ID]** : 显示连接的详细信息，默认显示所有连接的详细信息。--active表示只显示处于激活状态的连接。
+
+
+
+
+**up [CONN_ID]** : 使指定连接激活。
+
+
+
+
+**down** : 使指定的连接失效。需要注意的是，如果某个指定的连接被停用，那么拥有该连接的接口设备会尝试寻找一个设置了autoconnect属性的连接（一个接口可以配置多个连接，但是在某个特定时间只有一个连接生效），如果被停用的连接设置了autoconnect属性，那么被停用的连接将会被激活，导致该命令失效。所以大部分情况下，不会使用connection down命令，而是使用device disconnect命令。
+
+
+
+
+**modify [--temporary]  CONN_ID [+|-]SETTING.PROPERITY VALUE** : 修改接口设备的设置属性，如IPV4地址，DNS服务器指向，网关地址等。IFNAME表示设备名称，SETTING和PROPERITY表示某个属性，而VALUE表示给该属性传递的值，SETTING和PROPERITY可以去翻阅文档查看。+|- 表示添加和删除某个属性，如果不指定则默认为添加。使用该命令进行的修改是持久的，会去修改配置文件但是不会立即生效，需要重读配置文件或者重新激活设备或者使用nmcli device reapply IFNAME重新应用新的配置。如果使用了--temporary选项，则使用该命令进行的修改就是临时的，同样不会立即生效，但是会在重读配置文件或者重新激活设备时失效，需要使用nmcli device **reapply IFNAME : **重新应用新的配置。
+
+
+
+
+**edit [CONN_ID]** : 使用交互式的命令行接口编辑一个已存在的连接或者添加一个新的连接。 
+
+
+
+
+ 
+
+
+
+
+**常用SETTING和PROPERITY**
+
+
+
+
+**ipv4.addresses** : ipv4协议地址。
+
+
+
+
+**ipv4.gateway** : ipv4协议的网关。
+
+
+
+
+**ipv4.dns** : ipv4协议的DNS服务器指向。
+
+
+
+
+**ipv4.routes** : 配置ipv4协议的静态路由。
+
+
+
+    
+    [root@edu network-scripts]# nmcli device status  #首先查看接口的状态，发现ens37处于断开连接的状态
+    DEVICE  TYPE      STATE         CONNECTION 
+    ens33   ethernet  connected     ens33      
+    ens37   ethernet  disconnected  --         
+    lo      loopback  unmanaged     --         
+    [root@edu network-scripts]# nmcli connection up ens37   #使用connection up激活ens37连接。需要注意的是，在device中，ens37是设备名，在connection中，ens37是连接名，而设备名和连接名可以不同。连接名可以通过CONNECTION.ID属性修改
+    Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/8)
+    [root@edu network-scripts]# nmcli connection   #查看连接状态，发现ens37连接已经成功在ens37设备上激活了
+    NAME   UUID                                  TYPE            DEVICE 
+    ens33  0d4277ed-36f3-4c0d-bbd6-cf718380fab1  802-3-ethernet  ens33  
+    ens37  22ef659d-bf33-3ed2-a13d-8763ba0238d9  802-3-ethernet  ens37  
+    [root@edu network-scripts]# nmcli connection show ens37      #使用connection show命令查看ens37连接的详细属性
+    connection.id:                          ens37
+    connection.uuid:                        22ef659d-bf33-3ed2-a13d-8763ba0238d9
+    connection.stable-id:                   --
+    connection.interface-name:              --
+    connection.type:                        802-3-ethernet
+    connection.autoconnect:                 yes
+    connection.autoconnect-priority:        -999
+    connection.autoconnect-retries:         -1 (default)
+    connection.timestamp:                   1528338736
+    connection.read-only:                   no
+    connection.permissions:                 --
+    connection.zone:                        --
+    connection.master:                      --
+    connection.slave-type:                  --
+    connection.autoconnect-slaves:          -1 (default)
+    connection.secondaries:                 --
+    connection.gateway-ping-timeout:        0
+    connection.metered:                     unknown
+    connection.lldp:                        -1 (default)
+    802-3-ethernet.port:                    --
+    802-3-ethernet.speed:                   0
+    802-3-ethernet.duplex:                  --
+    802-3-ethernet.auto-negotiate:          no
+    802-3-ethernet.mac-address:             00:0C:29:DD:B3:B8
+    802-3-ethernet.cloned-mac-address:      --
+    802-3-ethernet.generate-mac-address-mask:--
+    802-3-ethernet.mac-address-blacklist:   --
+    802-3-ethernet.mtu:                     auto
+    802-3-ethernet.s390-subchannels:        --
+    802-3-ethernet.s390-nettype:            --
+    802-3-ethernet.s390-options:            --
+    802-3-ethernet.wake-on-lan:             1 (default)
+    802-3-ethernet.wake-on-lan-password:    --
+    ipv4.method:                            manual
+    ipv4.dns:                               --
+    ipv4.dns-search:                        --
+    ipv4.dns-options:                       (default)
+    ipv4.dns-priority:                      0
+    ipv4.addresses:                         10.60.72.188/24, 10.60.72.199/24
+    ipv4.gateway:                           --
+    ipv4.routes:                            --
+    ipv4.route-metric:                      -1
+    ipv4.ignore-auto-routes:                no
+    ipv4.ignore-auto-dns:                   no
+    ipv4.dhcp-client-id:                    --
+    ipv4.dhcp-timeout:                      0
+    ipv4.dhcp-send-hostname:                yes
+    ipv4.dhcp-hostname:                     --
+    ipv4.dhcp-fqdn:                         --
+    ipv4.never-default:                     no
+    ipv4.may-fail:                          yes
+    ipv4.dad-timeout:                       -1 (default)
+    ipv6.method:                            ignore
+    ipv6.dns:                               --
+    ipv6.dns-search:                        --
+    ipv6.dns-options:                       (default)
+    ipv6.dns-priority:                      0
+    ipv6.addresses:                         --
+    ipv6.gateway:                           --
+    ipv6.routes:                            --
+    ipv6.route-metric:                      -1
+    ipv6.ignore-auto-routes:                no
+    ipv6.ignore-auto-dns:                   no
+    ipv6.never-default:                     no
+    ipv6.may-fail:                          yes
+    ipv6.ip6-privacy:                       -1 (unknown)
+    ipv6.addr-gen-mode:                     stable-privacy
+    ipv6.dhcp-send-hostname:                yes
+    ipv6.dhcp-hostname:                     --
+    ipv6.token:                             --
+    proxy.method:                           none
+    proxy.browser-only:                     no
+    proxy.pac-url:                          --
+    proxy.pac-script:                       --
+    GENERAL.NAME:                           ens37
+    GENERAL.UUID:                           22ef659d-bf33-3ed2-a13d-8763ba0238d9
+    GENERAL.DEVICES:                        ens37
+    GENERAL.STATE:                          activated
+    GENERAL.DEFAULT:                        no
+    GENERAL.DEFAULT6:                       no
+    GENERAL.VPN:                            no
+    GENERAL.ZONE:                           --
+    GENERAL.DBUS-PATH:                      /org/freedesktop/NetworkManager/ActiveConnection/8
+    GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/Settings/2
+    GENERAL.SPEC-OBJECT:                    --
+    GENERAL.MASTER-PATH:                    --
+    IP4.ADDRESS[1]:                         10.60.72.188/24
+    IP4.ADDRESS[2]:                         10.60.72.199/24
+    IP4.GATEWAY:                            --
+    IP6.ADDRESS[1]:                         fe80::20c:29ff:fedd:b3b8/64
+    IP6.GATEWAY:                            fe80::3e8a:b0ff:fe92:f5c1
+    [root@edu network-scripts]# nmcli conn mod ens37 -ipv4.addresses 10.60.72.199/24    #使用connection modify 命令修改ens37连接的ipv4地址属性，删除ens37中的一个ipv4地址。
+    [root@edu network-scripts]# nmcli dev show ens37              #查看ens37设备的信息，发现10.60.72.199/24这个ip地址仍然在ens37设备上，并没有被删除。这是因为connection命令修改的是配置文件，需要重新激活才能生效。
+    GENERAL.DEVICE:                         ens37
+    GENERAL.TYPE:                           ethernet
+    GENERAL.HWADDR:                         00:0C:29:DD:B3:B8
+    GENERAL.MTU:                            1500
+    GENERAL.STATE:                          100 (connected)
+    GENERAL.CONNECTION:                     ens37
+    GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/ActiveConnection/8
+    WIRED-PROPERTIES.CARRIER:               on
+    IP4.ADDRESS[1]:                         10.60.72.188/24
+    IP4.ADDRESS[2]:                         10.60.72.199/24
+    IP4.GATEWAY:                            --
+    IP6.ADDRESS[1]:                         fe80::20c:29ff:fedd:b3b8/64
+    IP6.GATEWAY:                            fe80::3e8a:b0ff:fe92:f5c1
+    [root@edu network-scripts]# cat ifcfg-ens37    #查看ens37连接的配置文件，发现10.60.72.199/24的IP被删除了
+    HWADDR=00:0C:29:DD:B3:B8
+    TYPE=Ethernet
+    PROXY_METHOD=none
+    BROWSER_ONLY=no
+    BOOTPROTO=static
+    IPADDR=10.60.72.188
+    PREFIX=24
+    DEFROUTE=yes
+    IPV4_FAILURE_FATAL=no
+    NAME=ens37
+    UUID=22ef659d-bf33-3ed2-a13d-8763ba0238d9
+    ONBOOT=yes
+    AUTOCONNECT_PRIORITY=-999
+    IPV6INIT=no
+    [root@edu network-scripts]# nmcli dev disconnect ens37 ; nmcli conn up ens37   #使用;分隔两个命令，第一个命令断开ens37连接，第二个命令激活ens37连接
+    Device 'ens37' successfully disconnected.
+    Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/9)
+    [root@edu network-scripts]# nmcli dev show ens37    #查看ens37设备信息，发现第二个ip已经消失了
+    GENERAL.DEVICE:                         ens37
+    GENERAL.TYPE:                           ethernet
+    GENERAL.HWADDR:                         00:0C:29:DD:B3:B8
+    GENERAL.MTU:                            1500
+    GENERAL.STATE:                          100 (connected)
+    GENERAL.CONNECTION:                     ens37
+    GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/ActiveConnection/9
+    WIRED-PROPERTIES.CARRIER:               on
+    IP4.ADDRESS[1]:                         10.60.72.188/24
+    IP4.GATEWAY:                            --
+    IP6.ADDRESS[1]:                         fe80::20c:29ff:fedd:b3b8/64
+    IP6.GATEWAY:                            fe80::3e8a:b0ff:fe92:f5c1
+    [root@edu network-scripts]# nmcli conn mod --temporary ens37 +ipv4.addresses 10.60.72.199/24   #再尝试使用--temporary选项，并为ens37连接添加一个新的ipv4地址
+    [root@edu network-scripts]# nmcli dev show ens37          #查看ens37设备，发现没有生效
+    GENERAL.DEVICE:                         ens37
+    GENERAL.TYPE:                           ethernet
+    GENERAL.HWADDR:                         00:0C:29:DD:B3:B8
+    GENERAL.MTU:                            1500
+    GENERAL.STATE:                          100 (connected)
+    GENERAL.CONNECTION:                     ens37
+    GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/ActiveConnection/9
+    WIRED-PROPERTIES.CARRIER:               on
+    IP4.ADDRESS[1]:                         10.60.72.188/24
+    IP4.GATEWAY:                            --
+    IP6.ADDRESS[1]:                         fe80::20c:29ff:fedd:b3b8/64
+    IP6.GATEWAY:                            fe80::3e8a:b0ff:fe92:f5c1
+    [root@edu network-scripts]# cat ifcfg-ens37    #查看配置文件，发现也没有新增一个ip地址
+    HWADDR=00:0C:29:DD:B3:B8
+    TYPE=Ethernet
+    PROXY_METHOD=none
+    BROWSER_ONLY=no
+    BOOTPROTO=static
+    IPADDR=10.60.72.188
+    PREFIX=24
+    DEFROUTE=yes
+    IPV4_FAILURE_FATAL=no
+    NAME=ens37
+    UUID=22ef659d-bf33-3ed2-a13d-8763ba0238d9
+    ONBOOT=yes
+    AUTOCONNECT_PRIORITY=-999
+    IPV6INIT=no
+    [root@edu network-scripts]# nmcli dev reapply ens37    #使用device reapply命令重新应用新的连接配置
+    Connection successfully reapplied to device 'ens37'.
+    [root@edu network-scripts]# nmcli dev show ens37        #查看ens37设备，发现新的连接配置生效了
+    GENERAL.DEVICE:                         ens37
+    GENERAL.TYPE:                           ethernet
+    GENERAL.HWADDR:                         00:0C:29:DD:B3:B8
+    GENERAL.MTU:                            1500
+    GENERAL.STATE:                          100 (connected)
+    GENERAL.CONNECTION:                     ens37
+    GENERAL.CON-PATH:                       /org/freedesktop/NetworkManager/ActiveConnection/9
+    WIRED-PROPERTIES.CARRIER:               on
+    IP4.ADDRESS[1]:                         10.60.72.188/24
+    IP4.ADDRESS[2]:                         10.60.72.199/24
+    IP4.GATEWAY:                            --
+    IP6.ADDRESS[1]:                         fe80::20c:29ff:fedd:b3b8/64
+    IP6.GATEWAY:                            --
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

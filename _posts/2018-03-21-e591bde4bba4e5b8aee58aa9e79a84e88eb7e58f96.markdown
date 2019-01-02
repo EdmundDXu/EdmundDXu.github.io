@@ -1,0 +1,204 @@
+---
+author: edmund
+comments: true
+date: 2018-03-21 09:00:08+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/03/21/%e5%91%bd%e4%bb%a4%e5%b8%ae%e5%8a%a9%e7%9a%84%e8%8e%b7%e5%8f%96/
+slug: '%e5%91%bd%e4%bb%a4%e5%b8%ae%e5%8a%a9%e7%9a%84%e8%8e%b7%e5%8f%96'
+title: 命令帮助的获取
+wordpress_id: 46
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- bash
+- linux
+- 命令帮助
+---
+
+# 什么是命令
+
+
+命令就是位于文件系统中的一系列程序。而命令又分为内部命令和外部命令，外部命令就是一般意义上的程序，而内部命令则是某个shell程序内部自带的命令。
+
+在继续往下讲之前，先提一下PATH环境变量，这个变量可以通过以下命令在Linux中查看:
+
+
+<blockquote>[root@node1 ~]# echo $PATH
+/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/bin</blockquote>
+
+
+当你在shell下键入命令的时候，shell会在记录在PATH环境变量下的路径中查找和这个命令同名的程序，从左向右找，一旦找到就会执行。你可以通过以下命令查看命令位于什么路径下,用法 which COMMAND
+
+
+<blockquote>[root@node1 ~]# which cat
+/usr/bin/cat</blockquote>
+
+
+这个是针对于外部程序，如果加上内部程序，那么shell执行命令的流程应该是这样的:
+
+
+<blockquote>读入命令-->查找shell内部是否有该命令-->查找定义在PATH中的路径中是否有该命令-->返回命令未找到</blockquote>
+
+
+
+
+# 内部命令获取帮助
+
+
+
+
+<blockquote>help COMMAND
+
+[root@node1 ~]# help cd
+cd: cd [-L|[-P [-e]]] [dir]
+Change the shell working directory.
+
+Change the current directory to DIR. The default DIR is the value of the
+HOME shell variable.
+
+The variable CDPATH defines the search path for the directory containing
+DIR. Alternative directory names in CDPATH are separated by a colon (:).
+A null directory name is the same as the current directory. If DIR begins
+with a slash (/), then CDPATH is not used.
+
+If the directory is not found, and the shell option `cdable_vars' is set,
+the word is assumed to be a variable name. If that variable has a value,
+its value is used for DIR.
+
+Options:
+-L force symbolic links to be followed
+-P use the physical directory structure without following symbolic
+links
+-e if the -P option is supplied, and the current working directory
+cannot be determined successfully, exit with a non-zero status
+
+The default is to follow symbolic links, as if `-L' were specified.
+
+Exit Status:
+Returns 0 if the directory is changed, and if $PWD is set successfully when
+-P is used; non-zero otherwise.</blockquote>
+
+
+
+
+# 外部命令获取帮助
+
+
+
+
+
+ 	
+  * 1) COMMAND --help 程序自身提供的帮助
+
+
+
+
+<blockquote>[root@node1 ~]# ls --help
+Usage: ls [OPTION]... [FILE]...
+List information about the FILEs (the current directory by default).
+Sort entries alphabetically if none of -cftuvSUX nor --sort is specified.
+
+Mandatory arguments to long options are mandatory for short options too.
+-a, --all do not ignore entries starting with .
+-A, --almost-all do not list implied . and ..</blockquote>
+
+
+.....
+
+
+
+
+
+ 	
+  * 2) man COMMAND  程序编写者为该程序所写的帮助手册,执行该命令后会进入一个命令行浏览器(less命令):
+
+
+
+
+<blockquote>[root@node1 ~]# man ls</blockquote>
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/03/man-page.jpg)
+
+**space: 表示向后翻一页**
+
+**b: 表示向前翻一页**
+
+**d:表示向后翻半页**
+
+**u:表示向前翻半页**
+
+**enter, j : 表示向后翻一行**
+
+**k: 表示向前翻一行**
+
+更详细的信息可以通过: **man less**获得，因为man
+
+本身就会调用less命令.
+
+
+
+
+
+ 	
+  * 3) info COMMAND  程序编写者为该程序所写的info手册,执行该命令后会进入一个命令行浏览器，可以通过超链接在各个页面中进行跳转。
+
+
+
+
+<blockquote>[root@node1 ~]# info ls</blockquote>
+
+
+![](http://118.25.17.78/wp-content/uploads/2018/03/info-page.jpg)
+
+
+
+
+
+ 	
+  * 4)查阅官方文档
+
+
+在程序的官网中，找到DOCUMENTATION或者类似的标签页，进入该页面就会有关于该程序全面的帮助。
+
+ 	
+  * 5)查看程序目录下的帮助文档
+
+
+在某些程序的安装目录下，特别是程序的源代码中，会有一些程序的作者写的帮助文档，一般有以下的文件:
+
+README
+
+INSTALL
+
+CHANGELOG
+
+...
+
+ 	
+  * 6)发行版的官方文档
+
+
+类似于程序的官方文档，该程序所在发行版的官方文档中也会提供关于该程序的使用。（因为每个发行版对同一个程序可能会给予不同的编译参数，导致不同发行版的同一个程序会有不同的特性）
+
+ 	
+  * 7)Google
+
+
+最强的hack工具
+
+
+
+
+
+
+
+
+
+
+
+
+
+

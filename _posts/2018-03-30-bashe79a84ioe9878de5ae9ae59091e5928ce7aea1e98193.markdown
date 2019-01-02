@@ -1,0 +1,604 @@
+---
+author: edmund
+comments: true
+date: 2018-03-30 01:52:43+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/03/30/bash%e7%9a%84io%e9%87%8d%e5%ae%9a%e5%90%91%e5%92%8c%e7%ae%a1%e9%81%93/
+slug: bash%e7%9a%84io%e9%87%8d%e5%ae%9a%e5%90%91%e5%92%8c%e7%ae%a1%e9%81%93
+title: bash的IO重定向和管道
+wordpress_id: 142
+categories:
+- Linux随笔
+post_format:
+- 日志
+tags:
+- linux
+---
+
+Linux之所以能成为现在的Linux，和GNU计划密不可分，GNU计划为Linux操作系统提供了许多优秀的开源程序，正是由于这些开源程序，Linux才得以引起世人的注意，才得以发展至今。而我们又知道，程序是由指令+数据组成的，一个空有指令的程序是一个死物，根本无法发挥程序应有的功能，只有能够接收数据，输出数据的程序才是活的程序，才能为我们所用。
+
+一个程序可以从何处获得数据？键盘输入，文件输入，网络传输，等等，这么多的输入方式，那程序到底应该从何处读取到数据？
+
+一个程序可以向何处输出数据？显示屏输出，打印机输出，文件输出，网络输出，等等，这么多的输出方式，那程序又应该向何处输出数据？
+
+在Linux中有一个哲学思想，叫做一切皆文件，没错，上面提到的设备也被看作是文件，存在于/dev目录下，并且每个文件都有自己的文件描述符，我们可以凭借这个设备文件来从设备中读入数据和向设备中写出数据。
+
+但是，如果每次执行程序时都需要我们来指定哪个设备或文件，这就太麻烦了。为此，我们当然需要定义一个默认的输入和一个默认的输出，让我们在执行程序时，程序能够在不指定从何处读取或者向何处写出数据的时候，自行去找默认的输入和输出。这个默认的输入和输出就称为标准输入和标准输出。他们的文件描述符分别是0（标准输入）和1（标准输出）。而他们分别代表键盘（标准输入）和显示器（标准输出）。
+
+然而我们又知道，错误信息也是一种输出，但是他能不能和正常的程序输出算作同一个输出呢？当然不行，他们输出的信息的性质完全不同，错误信息应该和正确的执行信息分开输出，所以，我们还需要一个标准错误输出，文件描述符为2，代表的是显示器。
+
+现在让我们来总结一下，Linux中有三种标准输入输出：
+
+
+<blockquote>name              文件描述符         设备
+
+标准输入            0                       键盘
+
+标准输出            1                      显示器
+
+标准错误            2                     显示器
+
+</blockquote>
+
+
+藉由上述的背景，我们就可以开始讲bash的IO重定向和管道了。
+
+从上面的讲述中，我们可以知道，如果一个命令本身没有默认的输入输出位置，它就会从标准输入读入，向标准输出写出。但是有些时候，我们并不想让程序从标准输入读入数据，或者是向标准输出写出数据，那这个时候，就需要IO重定向了。
+
+
+### 输出重定向
+
+
+
+
+使用格式：
+
+
+
+
+COMMAND 1> NEW_POSITION 输出覆盖重定向
+
+
+
+
+COMMAND 1>> NEW_POSITION 输出追加重定向
+
+
+
+
+只需要在需要进行重定向的命令后面跟上 “1> 重定向的位置” 即可进行输出的重定向，而由于输出重定向的默认文件描述符为1，故我们可以省略1，直接使用 >或者>>。
+
+
+
+
+简写使用格式：
+
+
+
+
+COMMAND > NEW_POSITION 输出覆盖重定向
+
+
+
+
+COMMAND >> NEW_POSITION 输出追加重定向
+
+
+
+
+比如我们不想让ls命令的结果打印到屏幕，我们可以使用重定向让它输出至文件中。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 /]# ls > /tmp/ls.out
+> 
+> 
+</blockquote>
+
+
+
+
+可以发现，执行完命令后，屏幕中没有打印任何信息，接下来我们去查看这个文件。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 /]# cat /tmp/ls.out
+apps
+bin
+boot
+data
+dev
+etc
+home
+input
+lib
+lib64
+media
+mnt
+opt
+proc
+root
+run
+sbin
+srv
+sys
+tmp
+usr
+var
+> 
+> 
+</blockquote>
+
+
+
+
+Perfect！成功将输出重定向到了文件中。但是不要急，我们再执行一个命令。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 /]# ls /usr > /tmp/ls.out
+> 
+> 
+</blockquote>
+
+
+
+
+这个命令的输出又被重定向到了/tmp/ls.out文件中，我们来查看一下这个文件。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 /]# cat /tmp/ls.out
+bin
+etc
+games
+include
+lib
+lib64
+libexec
+local
+sbin
+share
+src
+tmp
+> 
+> 
+</blockquote>
+
+
+
+
+发现了吗，之前我们ls执行结果被这个ls /usr的执行结果覆盖掉了，这就是因为 > 是覆盖重定向，可以看出这个重定向非常危险，没有任何提示信息就直接覆盖文件，如果一个不注意，就可能会将重要的文件覆盖掉，导致灾难性的后果。所以我们可以设置bash的属性，通过**set -C**。
+
+
+
+
+-C If set, disallow existing regular files to be overwritten
+by redirection of output. 如果-C被设置，那么将不允许一个已经存在的普通文件被覆盖重定向覆盖。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 /]# set -C
+[root@node1 /]# ls /usr > /tmp/ls.out
+-bash: /tmp/ls.out: cannot overwrite existing file
+> 
+> 
+</blockquote>
+
+
+
+
+从结果中可以发现，成功拦截下这次覆盖。如果我们在某些情况下，无论如何都要覆盖掉这个文件，那么我们可以使用强制覆盖的语法来完成操作, **>|**
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 /]# ls / >| /tmp/ls.out
+> 
+> 
+</blockquote>
+
+
+
+
+可以看出命令已经执行成功，并没有受set -C的影响。
+
+
+
+
+介绍完覆盖重定向后，我们再来讲追加重定向，这个重定向很简单，如果目标文件不存在，那么就新建一个这个文件，如果文件已经存在，那么就在该文件的尾部继续追加内容。
+
+
+
+
+[root@node1 /]# ls /etc/rc.d/ >> /tmp/ls.out
+
+
+
+
+命令执行成功，我们来看一下这个文件的内容。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 /]# cat /tmp/ls.out
+apps
+bin
+boot
+data
+dev
+etc
+home
+input
+lib
+lib64
+media
+mnt
+opt
+proc
+root
+run
+sbin
+srv
+sys
+tmp
+usr
+var
+init.d
+rc0.d
+rc1.d
+rc2.d
+rc3.d
+rc4.d
+rc5.d
+rc6.d
+rc.local
+> 
+> 
+</blockquote>
+
+
+
+
+可以发现，ls /etc/rc.d下的内容已经被追加到了/tmp/ls.out文件尾部。
+
+
+
+
+
+### 错误重定向
+
+
+
+
+COMMAND 2> NEW_POSITION 错误覆盖重定向
+
+
+
+
+COMMAND 2>> NEW_POSITION 错误追加重定向
+
+
+
+
+由于标准输出重定向已经占用了输出重定向的默认位子，所以我们不能省略2.
+
+
+
+
+使用方法和标准输出重定向类似，只不过这个只会将错误信息重定向，而正常输出只会打印到屏幕上。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 /]# ls / 2> /tmp/ls.err
+apps boot dev home lib media opt root sbin sys usr
+bin data etc input lib64 mnt proc run srv tmp var
+> 
+> 
+</blockquote>
+
+
+
+
+能够发现，正常输出并没有被重定向，下面我们制造一个错误。(注意做实验的时候先使用set +C取消掉对覆盖重定向的限制)
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 /]# ls /edmund 2> /tmp/ls.err
+> 
+> 
+</blockquote>
+
+
+
+
+此时屏幕中没有任何输出，因为根下并没有edmund这个目录，所以命令会报错，此时错误信息会被重定向至/tmp/ls.err文件中。我们来查看一下这个文件。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 /]# cat /tmp/ls.err
+ls: cannot access /edmund: No such file or directory
+> 
+> 
+</blockquote>
+
+
+
+
+错误信息果然被重定向到了此处。
+
+
+
+
+同样的，错误追加重定向也很容易使用。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 /]# lss / 2>> /tmp/ls.err
+> 
+> 
+</blockquote>
+
+
+
+
+很明显我们没有lss这个命令，所以bash会报错，此时报错信息会被追加至/tmp/ls.err文件中。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 /]# cat /tmp/ls.err
+ls: cannot access /edmund: No such file or directory
+-bash: lss: command not found
+> 
+> 
+</blockquote>
+
+
+
+
+果然如此。
+
+
+
+
+但是此时，如果命令的执行过程既有正常程序输出，又有错误信息输出（如find命令），那么该怎么办，我们可以简单地通过重定向的叠加来完成。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 /]# ls / > /tmp/ls.out 2> /tmp/ls.err
+> 
+> 
+</blockquote>
+
+
+
+
+此时，如果这个命令执行正确，那么正确信息会被写至/tmp/ls.out中，如果有错误信息，那么错误信息会被写至/tmp/ls.err中，但是这就带来一个问题，如果命令执行的过程中只有正确信息，那么错误信息文件/tmp/ls.err同样会被创建，但是内容为空。同样的，如果命令的执行过程中只有错误信息，那么正确信息文件/tmp/ls.out也同样会被创建出来，内容也为空。这就产生了一个无用的文件，如果我们写了一个脚本，文件名为随机生成，而且会循环执行，那么将会产生大量的无用的空文件，这将会带来管理的不便。所以，此时我们就有必要将标准输出和错误输出流合并输出到同一个文件中，避免产生垃圾文件。
+
+
+
+
+
+### 合并标准输出和错误输出
+
+
+
+
+使用格式：
+
+
+
+
+COMMAND &> NEW_POSITION 覆盖合并重定向
+
+
+
+
+COMMAND &>> NEW_POSITION 追加合并重定向
+
+
+
+
+或者
+
+
+
+
+COMMAND > NEW_POSITION 2&>1 覆盖合并重定向
+
+
+
+
+COMMAND >> NEW_POSITION 2&>1 追加合并重定向
+
+
+合并标准输出和错误输出，将正常程序输出和错误输出写入到同一个文件中。具体用法与标准输出和错误输出类似，就不再赘述。
+
+
+
+此时你可能会想，能不能这个样子
+
+
+<blockquote>[root@node1 /]# ls / > /tmp/ls.out 2> /tmp/ls.out</blockquote>
+
+
+这样不也完成了合并标准输出和错误输出吗？不错，输出确实可以被写入到同一个文件中，但是会有一个问题，标准输出流和错误输出流会争抢这个文件，你写入一句，我写入一句，导致这个文件结构混乱，一行正常输出，一行错误输出，又一行正常输出，又一行错误输出。
+
+
+### 输入重定向
+
+
+
+
+使用格式：
+
+
+
+
+COMMAND < NEW_POSITION 输入重定向
+
+
+
+
+COMMAND << NEW_POSITION 此处文档([HERE DOCUMENT](https://en.wikipedia.org/wiki/Here_document))
+
+
+输入重定向可以让程序不从标准输入（键盘）中读取数据，转而从文件中读入数据。
+
+
+<blockquote>[root@node1 ~]# tr 'a-z' 'A-Z' < /etc/passwd
+ROOT:X:0:0:ROOT:/ROOT:/BIN/BASH
+BIN:X:1:1:BIN:/BIN:/SBIN/NOLOGIN
+DAEMON:X:2:2:DAEMON:/SBIN:/SBIN/NOLOGIN</blockquote>
+
+
+可以发现，tr从文件中得到了输入，并且将输出打印到屏幕中。
+
+
+
+
+<blockquote>**here文档**，又称作**heredoc**、**hereis**、**here-字串**或**here-脚本**，是一种在命令行shell（如[sh](https://zh.wikipedia.org/wiki/Bourne_Shell)、[csh](https://zh.wikipedia.org/wiki/C_shell)、[ksh](https://zh.wikipedia.org/wiki/Korn_shell)、[bash](https://zh.wikipedia.org/wiki/Bash)、[PowerShell](https://zh.wikipedia.org/wiki/PowerShell)和[zsh](https://zh.wikipedia.org/wiki/Z_shell)）和程序语言（像[Perl](https://zh.wikipedia.org/wiki/Perl)、[PHP](https://zh.wikipedia.org/wiki/PHP)、[Python](https://zh.wikipedia.org/wiki/Python)和[Ruby](https://zh.wikipedia.org/wiki/Ruby)）里定义一个[字串](https://zh.wikipedia.org/wiki/%E5%AD%97%E4%B8%B2)的方法。它可以保存文字里面的换行或是缩排等空白字元。一些语言允许在字串里执行[变量](https://zh.wikipedia.org/wiki/%E5%8F%98%E9%87%8F)替换和[命令替换](https://zh.wikipedia.org/w/index.php?title=%E5%91%BD%E4%BB%A4%E6%9B%BF%E6%8D%A2&action=edit&redlink=1)。</blockquote>
+
+
+上述为wiki百科对here document的解释，我们可以知道，here doc允许shell定义一个可以保存输入格式的字符串，并且允许变量替换和命令替换。
+
+
+<blockquote>here文档最通用的语法是`<<`紧跟一个标识符，从下一行开始是想要引用的文字，然后再在单独的一行用相同的标识符关闭。
+
+[root@node1 ~]# tr a-z A-Z << END
+> one two three
+> uno
+> dos tres
+> END
+ONE TWO THREE
+UNO
+DOS TRES</blockquote>
+
+
+观察上面的命令，可以看出 << 后面紧跟的END为一个标识符，然后下一行开始到END标识符之前都为here doc的内容，可以发现回车符和制表符被保存下来了，然后在键入END标识符后，here doc就会结束输入。
+
+在Unix shell里，here文档通常用于给命令提供输入内容。
+
+
+
+
+### 管道
+
+
+
+
+使用格式：
+
+
+
+
+COMMAND1 | COMMAND2 | COMMAND3 | ...
+
+
+创建管道一般会使用匿名管道，匿名管道再被创建时，会打开一个只读端和一个只写端，前一个命令向只写端写入数据，后一个命令从只读端读取数据，这就使得前一个命令的输出能够传给后一个命令，当做后一个命令的输入来使用，这个就是管道的作用，**将前一个命令的输出当做后一个命令的输入**。
+
+如上面使用格式所展示的，管道可以连接n个命令，在COMMAND1将输出传递给COMMAND2作为输入后，COMMAND2对数据进行处理，然后再将输出传递给COMMAND3作为输入，以此类推。
+
+
+<blockquote>[root@node1 ~]# cat /etc/passwd | tr a-z A-Z
+ROOT:X:0:0:ROOT:/ROOT:/BIN/BASH
+BIN:X:1:1:BIN:/BIN:/SBIN/NOLOGIN
+DAEMON:X:2:2:DAEMON:/SBIN:/SBIN/NOLOGIN</blockquote>
+
+
+上面的cat命令从/etc/passwd中读取数据，通过管道将输出传递给tr命令，tr命令将小写字母转换为大写字母后，将输出打印到屏幕。
+
+注意：最后一个命令是在子shell中执行的。
+
+
+
+说到管道就不得不提到一个命令，叫做**tee。**
+
+**NAME**
+tee - read from standard input and write to standard output and files
+
+**SYNOPSIS**
+tee [OPTION]... [FILE]...
+
+这个命令可以从标准输入中读取数据，将数据输出到标准输出和文件中。换句话说，这个命令可以将数据流分流，一个数据流进来，会有两个数据流 流出去。tee通常是配合管道，让它不但能在屏幕输出，而且也能够将它储存在文件中。一个数据在被另一个指令或程序改变之前的中间输出，也能够用tee来捕捉它。
+
+[root@node1 ~]# cat /etc/passwd | tee /tmp/cat.out | tr a-z A-Z
+ROOT:X:0:0:ROOT:/ROOT:/BIN/BASH
+BIN:X:1:1:BIN:/BIN:/SBIN/NOLOGIN
+DAEMON:X:2:2:DAEMON:/SBIN:/SBIN/NOLOGIN
+
+这个命令中，tee截取了cat输出的数据，然后将其保存到/tmp/cat.out文件中，接着又将其输出给tr命令，tr命令通过转换，将其以大写字母输出。
+
+我们可以查看一下/tmp/cat.out文件。
+
+[root@node1 ~]# cat /tmp/cat.out
+root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+
+果然保存的是经tr转换前的数据。
+
+

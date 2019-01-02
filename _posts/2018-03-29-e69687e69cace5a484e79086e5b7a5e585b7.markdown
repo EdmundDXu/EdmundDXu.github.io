@@ -1,0 +1,585 @@
+---
+author: edmund
+comments: true
+date: 2018-03-29 08:17:39+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/03/29/%e6%96%87%e6%9c%ac%e5%a4%84%e7%90%86%e5%b7%a5%e5%85%b7/
+slug: '%e6%96%87%e6%9c%ac%e5%a4%84%e7%90%86%e5%b7%a5%e5%85%b7'
+title: 文本处理工具wc,cut,sort,uniq
+wordpress_id: 132
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- linux
+- 命令
+---
+
+## wc命令
+
+
+
+
+**NAME**
+wc - print newline, word, and byte counts for each file
+
+
+
+
+**SYNOPSIS**
+wc [OPTION]... [FILE]...
+wc [OPTION]... --files0-from=F
+
+
+
+
+该命令可以方便地统计给定输入的行数、单词数和字节数，不过对于单词数，他并不能够做到识别单词，而是简单地以空格来作为每个单词的分隔符以计算单词数。
+
+
+
+
+如果不给定任何选项，则默认输出行数、单词数和字节数。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# wc /etc/passwd
+23 42 1089 /etc/passwd
+> 
+> 
+</blockquote>
+
+
+
+
+该输出分别为行数 单词数 字节数。
+
+
+
+
+
+### 常用选项
+
+
+
+
+-c, --bytes
+print the byte counts 只显示字节数
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# cat /etc/passwd | wc -c
+1089
+> 
+> 
+</blockquote>
+
+
+
+
+-w, --words
+print the word counts 只显示单词数
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# cat /etc/passwd | wc -w
+42
+> 
+> 
+</blockquote>
+
+
+
+
+-l, --lines
+print the newline counts 只显示行数
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 test]# cat /etc/passwd | wc -l
+23
+> 
+> 
+</blockquote>
+
+
+
+
+
+## cut命令
+
+
+
+
+**NAME**
+cut - remove sections from each line of files
+
+
+
+
+**SYNOPSIS**
+cut OPTION... [FILE]...
+
+
+
+
+该命令可以根据指定分隔符将给定的输入分割成多个字段，默认的分隔符为制表符\t，并且可以自定义输出的分隔符和输出的字段,字段编号从1开始。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 ~]# cut -d: -f1 /etc/passwd
+root
+bin
+daemon
+> 
+> 
+
+> 
+> ...
+> 
+> 
+</blockquote>
+
+
+
+
+### 常用选项
+
+
+
+
+-d, --delimiter=DELIM
+use DELIM instead of TAB for field delimiter 指定分隔符，默认为制表符
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 ~]# cut -d: -f1,2 /etc/passwd
+root:x
+bin:x
+daemon:x
+> 
+> 
+</blockquote>
+
+
+
+
+-f, --fields=LIST
+select only these fields; also print any line that contains no delimiter char‐
+acter, unless the -s option is specified 指定需要输出的字段，指定方式有三种:
+
+
+
+
+第一种：输出单个字段
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 ~]# cut -d: -f1 /etc/passwd
+root
+bin
+daemon
+> 
+> 
+</blockquote>
+
+
+
+
+第二种：输出多个字段，离散表示法，以逗号分隔多个字段
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 ~]# cut -d: -f1,2,3 /etc/passwd
+root:x:0
+bin:x:1
+daemon:x:2
+> 
+> 
+</blockquote>
+
+
+
+
+第三种：输出多个字段，连续表示法，用-表示区间
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 ~]# cut -d: -f1-4 /etc/passwd
+root:x:0:0
+bin:x:1:1
+daemon:x:2:2
+> 
+> 
+</blockquote>
+
+
+
+
+当然也可以混合使用离散表示法和区间表示法
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 ~]# cut -d: -f1-3,5 /etc/passwd
+root:x:0:root
+bin:x:1:bin
+daemon:x:2:daemon
+> 
+> 
+</blockquote>
+
+
+
+
+--output-delimiter=STRING
+use STRING as the output delimiter the default is to use the input delimiter 指定输出的字段分隔符，默认和输入的字段分隔符相同
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 ~]# cut -d: -f1-3,5 --output-delimiter=' ' /etc/passwd
+root x 0 root
+bin x 1 bin
+daemon x 2 daemon
+> 
+> 
+
+> 
+> 使用空格字符分隔输出结果。
+> 
+> 
+</blockquote>
+
+
+
+
+
+## sort命令
+
+
+
+
+**NAME**
+sort - sort lines of text files
+
+
+
+
+**SYNOPSIS**
+sort [OPTION]... [FILE]...
+sort [OPTION]... --files0-from=F
+
+
+
+
+sort命令用来为输入内容排序，默认以行为单位，默认按照字符大小排序，而不是按照数值大小排序，首先比较第一个字符，如果第一个字符相同则比较第二个，以此类推。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 ~]# cat /etc/passwd | sort
+adm:x:3:4:adm:/var/adm:/sbin/nologin
+bin:x:1:1:bin:/bin:/sbin/nologin
+chrony:x:998:996::/var/lib/chrony:/sbin/nologin
+> 
+> 
+
+> 
+> ...
+> 
+> 
+</blockquote>
+
+
+
+
+### 常用选项
+
+
+
+
+-f, --ignore-case
+fold lower case to upper case characters 排序时不区分大小写，即一个大小写视为相同
+
+
+
+
+-r, --reverse
+reverse the result of comparisons 默认排序方法为升序排序，该选项可以使排序结果逆序，即降序排序
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 ~]# sort -r /etc/passwd
+tss:x:59:59:Account used by the trousers package to sandbox the tcsd daemon:/dev/null:/sbin/nologin
+systemd-network:x:192:192:systemd Network Management:/:/sbin/nologin
+> 
+> 
+</blockquote>
+
+
+
+
+-k, --key=KEYDEF
+sort via a key; KEYDEF gives location and type 根据给定的字段排序，默认以空格分隔字段，字段编号从1开始
+
+
+
+
+-t, --field-separator=SEP
+use SEP instead of non-blank to blank transition 一般与-k选项一起使用，用于指定分隔符
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 ~]# sort -t: -k3 /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+edmund:x:1000:1000:edmund:/home/edmund:/bin/bash
+operator:x:11:0:operator:/root:/sbin/nologin
+> 
+> 
+
+> 
+> 表示以:为分隔符，以第三个字段为标准进行排序，仍然会按照字符大小进行排序
+> 
+> 
+</blockquote>
+
+
+
+
+-n, --numeric-sort
+compare according to string numerical value 按照数值大小进行排序
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 ~]# sort -t: -k3 -n /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+> 
+> 
+</blockquote>
+
+
+
+
+-u, --unique
+with -c, check for strict ordering; without -c, output only the first of an equal run 对输出去除重复值,可以与-k一起使用
+
+
+
+
+
+<blockquote>
+
+> 
+> 未使用-u选项时的输出
+> 
+> 
+
+> 
+> [root@node1 ~]# sort -t: -k4 -n /etc/passwd
+halt:x:7:0:halt:/sbin:/sbin/halt
+operator:x:11:0:operator:/root:/sbin/nologin
+root:x:0:0:root:/root:/bin/bash
+> 
+> 
+
+> 
+> 使用-u选项的输出
+> 
+> 
+
+> 
+> [root@node1 ~]# sort -t: -k4 -n -u /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+daemon:x:2:2:daemon:/sbin:/sbin/nologin
+> 
+> 
+</blockquote>
+
+
+
+
+
+## uniq命令
+
+
+
+
+**NAME**
+uniq - report or omit repeated lines
+
+
+
+
+**SYNOPSIS**
+uniq [OPTION]... [INPUT [OUTPUT]]
+
+
+
+
+该命令可以对输出进行去重操作，需要注意的是，**重复的概念应该是连续出现且完全相同**，如果两行数据是完全相同的但并不是连续出现的，那就不算重复。所以在调用该命令之前一般需要进行sort的排序操作，该命令与sort -u选项的区别就是，该命令可以有更多的特性。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 ~]# history | cut -d' ' -f5 | uniq | tail -10
+man
+sort
+man
+sort
+man
+sort
+man
+sort
+man
+history
+> 
+> 
+</blockquote>
+
+
+
+
+### **常用选项**
+
+
+
+
+该命令如果不加任何选项，其表现就和sort -u是一样的
+
+
+
+
+-c, --count
+prefix lines by the number of occurrences 在每行前面显示其重复出现的次数
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 ~]# history | cut -d' ' -f5 | sort | uniq -c
+> 
+> 
+
+> 
+> ...
+> 
+> 
+
+> 
+> 2 head
+3 help
+22 history
+2 hostname
+14 ifconfig
+1 iptables
+2 java
+1 javac
+> 
+> 
+
+> 
+> ...
+> 
+> 
+</blockquote>
+
+
+
+
+-d, --repeated
+only print duplicate lines, one for each group 只显示重复过的行
+
+
+
+
+-i, --ignore-case
+ignore differences in case when comparing 不区分大小写进行去重
+
+
+
+
+-u, --unique
+only print unique lines 只显示没有重复过的行

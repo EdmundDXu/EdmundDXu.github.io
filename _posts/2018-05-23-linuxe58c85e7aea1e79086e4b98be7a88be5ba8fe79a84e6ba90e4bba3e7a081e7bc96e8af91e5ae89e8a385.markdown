@@ -1,0 +1,567 @@
+---
+author: edmund
+comments: true
+date: 2018-05-23 04:49:55+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/05/23/linux%e5%8c%85%e7%ae%a1%e7%90%86%e4%b9%8b%e7%a8%8b%e5%ba%8f%e7%9a%84%e6%ba%90%e4%bb%a3%e7%a0%81%e7%bc%96%e8%af%91%e5%ae%89%e8%a3%85/
+slug: linux%e5%8c%85%e7%ae%a1%e7%90%86%e4%b9%8b%e7%a8%8b%e5%ba%8f%e7%9a%84%e6%ba%90%e4%bb%a3%e7%a0%81%e7%bc%96%e8%af%91%e5%ae%89%e8%a3%85
+title: Linux包管理之程序的源代码编译安装
+wordpress_id: 343
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- linux
+- 包管理
+- 命令
+- 源码编译
+---
+
+# 源代码编译安装简介
+
+
+
+
+在前面讲的程序包管理中我们知道，在Linux系统上安装程序可以使用rpm包很方便的完成，但是这是对于一般用户或者非开发人员来说。对于那些软件的开发者和追求最新技术的测试者来说，rpm包中的程序不仅发布速度慢，而且版本往往是趋向稳定的版本，对于最新的一些特性或者是冷门的一些特性，rpm包都不会予以提供。而且rpm包不一定是软件原作者制作的，就和原文与译文的关系一般，译文只代表了翻译者的想法，不能代表原作者的想法，所以直接去看源代码中的手册并且手动编译是最接近开发者心目中真正的软件的。
+
+
+
+
+知道了源代码编译安装的必要性之后，我们来讲讲完整的源码编译安装的步骤是什么样的。这里讲的是c/c++程序的编译安装。
+
+
+
+
+首先我们要获取源代码，这里先不管源代码是如何获取的，这里假设我们已经获得了源码,首先编译器会去找用户定义的预处理器（preprocessor），让预处理器对源代码执行预处理操作，然后编译器（compiler）会根据用户定义好的源代码依赖关系对源代码进行编译，编译完成后会生成编译后的源代码，接下来就要调用汇编器（assembler）对编译后的代码进行汇编，生成平台相关的指令序列，即目标代码，最后还没完，虽然已经将代码变成了计算机可以直接执行的二进制文件，但是代码中用到了库函数并不会被直接编译汇编，而是将目标代码转交给链接器（linker），然后链接器会将库文件与目标代码链接，最终就生成了目标程序。
+
+
+
+
+将上述过程总结就如下所示：
+
+
+
+
+**源代码 ==> 预处理 ==> 编译 ==> 汇编 ==> 链接 ==> 目标程序**
+
+
+
+
+这个过程涉及到的知识广度和深度很容易就能让大部分人望而却步，而且由于代码是别人写的，所以你对代码中的文件之间的依赖关系几乎一无所知，而我们知道，一个项目中会包含众多文件，而众多文件之间会存在复杂的相互依赖关系，这个相互依赖关系只有项目成员知道，其他人要想知道文件之间的依赖关系就需要阅读发布者提供的帮助文档和源代码，这个过程所需的成本是非常大的。
+
+
+
+
+
+
+
+# make 自动化构建工具
+
+
+
+
+为了解决上面的问题，斯图亚特·费尔曼德在1977年在贝尔实验室里制作了一个叫做make的软件。它是一个工具程序，用于项目文件的自动化构建，程序员在写完源代码后，只需要创建一个叫做makefile的文件，这个文件中指明了项目中的文件之间的依赖关系，以及构建编译所需要使用到的工具（gcc、cc等）， 其他人拿到源代码后，只需要简单地执行一个make命令，make就会去找makefile文件，然后根据makefile文件中指定的文件依赖关系依次编译文件，直到生成目标程序。
+
+
+
+
+当然，由于每个人对程序的特性要求不同，所以makefile文件不能写死，必须有一个东西能够接收用户要求的特性，以及用户指定的程序输出路径，动态生成makefile文件，然后用户再执行make命令即可。而接收用户输入的参数的那个工具就叫做configure，这是一个脚本，它能够接收用户输入的参数动态生成makefile文件。而我们又知道，configure脚本不能凭空生成makefile文件，configure脚本只负责填充那些动态的数据，比如程序的一些功能特性、程序生成后的输出路径、编译文件的输出路径的等等，而那些写死的数据，比如文件之间的依赖关系，就不需要放在configure脚本中，这些数据是放在一个叫做Makefile.in的文件中的。至此，我们知道configure脚本为了生成makefile文件，会需要用户输入一些参数，然后对着Makefile.in这个模板填充用户输入的参数，最终生成makefile文件。
+
+
+
+
+但是configure脚本和Makefile.in的文件的创建也是挺复杂的，所以为了减轻发布者的不必要的工作负担，就有了autoconf和automake程序，autoconf负责根据一些选项和参数快速生成configure脚本，而automake负责根据一些选项和参数快速生成Makefile.in文件。至此我们已经知道了makefile文件的来龙去脉。
+
+
+
+
+需要注意的是，由于每个程序的特性都不相同，所以每个程序的configure脚本一定是不同的，所以为了能够更好地使用configure脚本，我们需要在使用它之前做一些准备工作，比如通过configure --help命令查看程序支持的特性以及一些其他信息，通过源代码包中的INSTALL、README等文件获取程序的帮助信息，也可以通过程序的官网获取帮助文档。
+
+
+
+
+#  
+
+
+
+
+# 编译安装三步骤
+
+
+
+
+## configure
+
+
+
+
+(1)通过给configure脚本传递参数，指定程序的功能特性、安装路径等信息。该脚本在执行时会根据用户的输入和Makefile.in文件生成makefile文件。该脚本可以通过autoconf命令快速生成。
+
+
+
+
+(2)configure脚本根据参数、makefile文件以及其他信息检查当前主机是否满足编译该程序所依赖到的外部条件，比如依赖到的库文件。如果检查依赖出现错误，就会终止该脚本，显然，下一步的make也无法正常执行。
+
+
+
+
+## make
+
+
+
+
+根据makefile文件，生成目标程序。
+
+
+
+
+## make install
+
+
+
+
+将生成的目标文件复制到指定的输出路径，比如二进制文件输出到/usr/bin和/usr/sbin中，配置文件输出到/etc中,库文件输出到/usr/lib中。
+
+
+
+
+
+
+
+# 操作范例——httpd的编译安装
+
+
+
+
+**操作系统 : CentOS Linux 7**
+
+
+
+
+**源代码程序包 : httpd-2.2.29.tar.bz2**
+
+
+
+
+**安装的软件包组 : Development Tools**
+
+
+
+
+
+
+    
+    [root@edu ~]# tar xf httpd-2.2.29.tar.bz2   #提取出httpd的源代码程序包
+    [root@edu ~]# cd httpd-2.2.29  #进入目录
+    [root@edu httpd-2.2.29]# ./configure --help   #查看configure脚本的帮助  
+    `configure' configures this package to adapt to many kinds of systems.
+    
+    Usage: ./configure [OPTION]... [VAR=VALUE]...
+    
+    To assign environment variables (e.g., CC, CFLAGS...), specify them as
+    VAR=VALUE.  See below for descriptions of some of the useful variables.
+    
+    Defaults for the options are specified in brackets.
+    
+    Configuration:
+      -h, --help              display this help and exit
+          --help=short        display options specific to this package
+          --help=recursive    display the short help of all the included packages
+      -V, --version           display version information and exit
+      -q, --quiet, --silent   do not print `checking ...' messages
+          --cache-file=FILE   cache test results in FILE [disabled]
+      -C, --config-cache      alias for `--cache-file=config.cache'
+      -n, --no-create         do not create output files
+          --srcdir=DIR        find the sources in DIR [configure dir or `..']
+    
+    Installation directories:
+      --prefix=PREFIX         install architecture-independent files in PREFIX   #指定默认安装路径，如果不指定则默认为/usr/local/apache2。该默认安装路径的作用为：当其他文件的安装位置，比如二进制程序的安装路径
+                              [/usr/local/apache2]                               #没有指定时，会在默认安装位置下创建bin目录来存放二进制文件，同理，如果配置文件没有指定安装路径，就会在默认安装位置下创建etc目录存放配置文件
+      --exec-prefix=EPREFIX   install architecture-dependent files in EPREFIX
+                              [PREFIX]
+    
+    By default, `make install' will install all the files in
+    `/usr/local/apache2/bin', `/usr/local/apache2/lib' etc.  You can specify
+    an installation prefix other than `/usr/local/apache2' using `--prefix',
+    for instance `--prefix=$HOME'.
+    
+    For better control, use the options below.
+    
+    Fine tuning of the installation directories:
+      --bindir=DIR            user executables [EPREFIX/bin]                    #用户可执行的二进制文件安装路径
+      --sbindir=DIR           system admin executables [EPREFIX/sbin]           #管理员可执行的二进制文件安装路径
+      --libexecdir=DIR        program executables [EPREFIX/libexec]             #库文件安装路径
+      --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]        #配置文件安装路径
+      --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
+      --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+      --libdir=DIR            object code libraries [EPREFIX/lib]
+      --includedir=DIR        C header files [PREFIX/include]
+      --oldincludedir=DIR     C header files for non-gcc [/usr/include]
+      --datarootdir=DIR       read-only arch.-independent data root [PREFIX/share]
+      --datadir=DIR           read-only architecture-independent data [DATAROOTDIR]
+      --infodir=DIR           info documentation [DATAROOTDIR/info]
+      --localedir=DIR         locale-dependent data [DATAROOTDIR/locale]
+      --mandir=DIR            man documentation [DATAROOTDIR/man]
+      --docdir=DIR            documentation root [DATAROOTDIR/doc/PACKAGE]
+      --htmldir=DIR           html documentation [DOCDIR]
+      --dvidir=DIR            dvi documentation [DOCDIR]
+      --pdfdir=DIR            pdf documentation [DOCDIR]
+      --psdir=DIR             ps documentation [DOCDIR]
+    
+    System types:
+      --build=BUILD     configure for building on BUILD [guessed]
+      --host=HOST       cross-compile to build programs to run on HOST [BUILD]
+      --target=TARGET   configure for building compilers for TARGET [HOST]
+    
+    Optional Features:
+      --disable-option-checking  ignore unrecognized --enable/--with options
+      --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
+      --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+      --enable-layout=LAYOUT
+      --enable-v4-mapped      Allow IPv6 sockets to handle IPv4 connections
+      --enable-exception-hook Enable fatal exception hook
+      --enable-maintainer-mode
+                              Turn on debugging and compile time warnings
+      --enable-pie            Build httpd as a Position Independent Executable
+      --enable-modules=MODULE-LIST
+                              Space-separated list of modules to enable | "all" |
+                              "most"
+      --enable-mods-shared=MODULE-LIST
+                              Space-separated list of shared modules to enable |
+                              "all" | "most"
+      --disable-authn-file    file-based authentication control
+      --enable-authn-dbm      DBM-based authentication control
+      --enable-authn-anon     anonymous user authentication control
+      --enable-authn-dbd      SQL-based authentication control
+      --disable-authn-default authentication backstopper
+      --enable-authn-alias    auth provider alias
+      --disable-authz-host    host-based authorization control
+      --disable-authz-groupfile
+                              'require group' authorization control
+      --disable-authz-user    'require user' authorization control
+      --enable-authz-dbm      DBM-based authorization control
+      --enable-authz-owner    'require file-owner' authorization control
+      --enable-authnz-ldap    LDAP based authentication
+      --disable-authz-default authorization control backstopper
+      --disable-auth-basic    basic authentication
+      --enable-auth-digest    RFC2617 Digest authentication
+      --enable-isapi          isapi extension support
+      --enable-file-cache     File cache
+      --enable-cache          dynamic file caching
+      --enable-disk-cache     disk caching module
+      --enable-mem-cache      memory caching module
+      --enable-dbd            Apache DBD Framework
+      --enable-bucketeer      buckets manipulation filter
+      --enable-dumpio         I/O dump filter
+      --enable-echo           ECHO server
+      --enable-example        example and demo module
+      --enable-case-filter    example uppercase conversion filter
+      --enable-case-filter-in example uppercase conversion input filter
+      --enable-reqtimeout     Limit time waiting for request from client
+      --enable-ext-filter     external filter module
+      --disable-include       Server Side Includes
+      --disable-filter        Smart Filtering
+      --enable-substitute     response content rewrite-like filtering
+      --disable-charset-lite  character set translation
+      --enable-charset-lite   character set translation
+      --enable-deflate        Deflate transfer encoding support
+      --enable-ldap           LDAP caching and connection pooling services
+      --disable-log-config    logging configuration
+      --enable-log-forensic   forensic logging
+      --enable-logio          input and output logging
+      --disable-env           clearing/setting of ENV vars
+      --enable-mime-magic     automagically determining MIME type
+      --enable-cern-meta      CERN-type meta files
+      --enable-expires        Expires header control
+      --enable-headers        HTTP header control
+      --enable-ident          RFC 1413 identity check
+      --enable-usertrack      user-session tracking
+      --enable-unique-id      per-request unique ids
+      --disable-setenvif      basing ENV vars on headers
+      --disable-version       determining httpd version in config files
+      --enable-proxy          Apache proxy module
+      --enable-proxy-connect  Apache proxy CONNECT module
+      --enable-proxy-ftp      Apache proxy FTP module
+      --enable-proxy-http     Apache proxy HTTP module
+      --enable-proxy-scgi     Apache proxy SCGI module
+      --enable-proxy-ajp      Apache proxy AJP module
+      --enable-proxy-balancer Apache proxy BALANCER module
+      --enable-ssl            SSL/TLS support (mod_ssl)
+      --enable-distcache      Select distcache support in mod_ssl
+      --enable-optional-hook-export
+                              example optional hook exporter
+      --enable-optional-hook-import
+                              example optional hook importer
+      --enable-optional-fn-import
+                              example optional function importer
+      --enable-optional-fn-export
+                              example optional function exporter
+      --enable-static-support Build a statically linked version of the support
+                              binaries
+      --enable-static-htpasswd
+                              Build a statically linked version of htpasswd
+      --enable-static-htdigest
+                              Build a statically linked version of htdigest
+      --enable-static-rotatelogs
+                              Build a statically linked version of rotatelogs
+      --enable-static-logresolve
+                              Build a statically linked version of logresolve
+      --enable-static-htdbm   Build a statically linked version of htdbm
+      --enable-static-ab      Build a statically linked version of ab
+      --enable-static-checkgid
+                              Build a statically linked version of checkgid
+      --enable-static-htcacheclean
+                              Build a statically linked version of htcacheclean
+      --enable-static-httxt2dbm
+                              Build a statically linked version of httxt2dbm
+      --enable-http           HTTP protocol handling
+      --disable-mime          mapping of file-extension to MIME
+      --enable-dav            WebDAV protocol handling
+      --disable-status        process/thread monitoring
+      --disable-autoindex     directory listing
+      --disable-asis          as-is filetypes
+      --enable-info           server information
+      --enable-suexec         set uid and gid for spawned processes
+      --disable-cgid          CGI scripts
+      --enable-cgi            CGI scripts
+      --disable-cgi           CGI scripts
+      --enable-cgid           CGI scripts
+      --enable-dav-fs         DAV provider for the filesystem
+      --enable-dav-lock       DAV provider for generic locking
+      --enable-vhost-alias    mass virtual hosting module
+      --disable-negotiation   content negotiation
+      --disable-dir           directory request handling
+      --enable-imagemap       server-side imagemaps
+      --disable-actions       Action triggering on requests
+      --enable-speling        correct common URL misspellings
+      --disable-userdir       mapping of requests to user-specific directories
+      --disable-alias         mapping of requests to different filesystem parts
+      --enable-rewrite        rule based URL manipulation
+      --enable-so             DSO capability
+    
+    Optional Packages:
+      --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+      --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+      --with-included-apr     Use bundled copies of APR/APR-Util
+      --with-apr=PATH         prefix for installed APR or the full path to
+                                 apr-config
+      --with-apr-util=PATH    prefix for installed APU or the full path to
+                                 apu-config
+      --with-pcre=PATH        Use external PCRE library
+      --with-port=PORT        Port on which to listen (default is 80)
+      --with-sslport=SSLPORT  Port on which to securelisten (default is 443)
+      --with-z=DIR            use a specific zlib library
+      --with-sslc=DIR         RSA SSL-C SSL/TLS toolkit
+      --with-ssl=DIR          OpenSSL SSL/TLS toolkit
+      --with-mpm=MPM          Choose the process model for Apache to use.
+                              MPM={beos|event|worker|prefork|mpmt_os2|winnt}
+      --with-module=module-type:module-file
+                              Enable module-file in the modules/<module-type>
+                              directory.
+      --with-program-name     alternate executable name
+      --with-suexec-bin       Path to suexec binary
+      --with-suexec-caller    User allowed to call SuExec
+      --with-suexec-userdir   User subdirectory
+      --with-suexec-docroot   SuExec root directory
+      --with-suexec-uidmin    Minimal allowed UID
+      --with-suexec-gidmin    Minimal allowed GID
+      --with-suexec-logfile   Set the logfile
+      --with-suexec-safepath  Set the safepath
+      --with-suexec-umask     umask for suexec'd process
+    
+    Some influential environment variables:
+      CC          C compiler command
+      CFLAGS      C compiler flags
+      LDFLAGS     linker flags, e.g. -L<lib dir> if you have libraries in a
+                  nonstandard directory <lib dir>
+      LIBS        libraries to pass to the linker, e.g. -l<library>
+      CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
+                  you have headers in a nonstandard directory <include dir>
+      CPP         C preprocessor
+    
+    Use these variables to override the choices made by `configure' or to help
+    it to find libraries and programs with nonstandard names/locations.
+    
+    Report bugs to the package provider. 
+    [root@edu httpd-2.2.29]# ./configure --prefix=/usr/local/apache2 --sysconfdir=/etc/http2  #设置httpd的默认安装路径和配置文件安装路径，经过configure后没有error，表示已经成功生成makefile文件
+    ...省略中间的check输出
+    config.status: creating include/ap_config_layout.h
+    config.status: creating support/apxs
+    config.status: creating support/apachectl
+    config.status: creating support/dbmmanage
+    config.status: creating support/envvars-std
+    config.status: creating support/log_server_status
+    config.status: creating support/logresolve.pl
+    config.status: creating support/phf_abuse_log.cgi
+    config.status: creating support/split-logfile
+    config.status: creating build/rules.mk
+    config.status: creating build/pkg/pkginfo
+    config.status: creating build/config_vars.sh
+    config.status: creating include/ap_config_auto.h
+    config.status: executing default commands
+    [root@edu httpd-2.2.29]# make  #直接在Makefile文件所在的目录下执行make命令即可完成编译，如果没有输出error，表示编译成功，可以安装了
+    ...省略中间的make过程
+    /root/httpd-2.2.29/srclib/apr/libtool --silent --mode=link gcc -g -O2 -pthread -o httpd modules.lo buildmark.o -export-dynamic server/libmain.la modules/aaa/libmod_authn_file.la 
+    modules/aaa/libmod_authn_default.la modules/aaa/libmod_authz_host.la modules/aaa/libmod_authz_groupfile.la 
+    modules/aaa/libmod_authz_user.la modules/aaa/libmod_authz_default.la modules/aaa/libmod_auth_basic.la modules/filters/libmod_include.la 
+    modules/filters/libmod_filter.la modules/loggers/libmod_log_config.la modules/metadata/libmod_env.la modules/metadata/libmod_setenvif.la modules/metadata/libmod_version.la 
+    modules/http/libmod_http.la modules/http/libmod_mime.la modules/generators/libmod_status.la modules/generators/libmod_autoindex.la 
+    modules/generators/libmod_asis.la modules/generators/libmod_cgi.la modules/mappers/libmod_negotiation.la modules/mappers/libmod_dir.la 
+    modules/mappers/libmod_actions.la modules/mappers/libmod_userdir.la modules/mappers/libmod_alias.la 
+    modules/mappers/libmod_so.la server/mpm/prefork/libprefork.la os/unix/libos.la -lm /root/httpd-2.2.29/srclib/pcre/libpcre.la /root/httpd-2.2.29/srclib/apr-util/libaprutil-1.la 
+    /root/httpd-2.2.29/srclib/apr-util/xml/expat/libexpat.la /root/httpd-2.2.29/srclib/apr/libapr-1.la -lrt -lcrypt -lpthread -ldl 
+    make[1]: Leaving directory `/root/httpd-2.2.29'
+    [root@edu httpd-2.2.29]# make install  #直接安装即可
+    ...省略中间的make install过程
+    Installing configuration files
+    mkdir /etc/http2
+    mkdir /etc/http2/extra
+    mkdir /etc/http2/original
+    mkdir /etc/http2/original/extra
+    Installing HTML documents
+    mkdir /usr/local/apache2/htdocs
+    Installing error documents
+    mkdir /usr/local/apache2/error
+    Installing icons
+    mkdir /usr/local/apache2/icons
+    mkdir /usr/local/apache2/logs
+    Installing CGIs
+    mkdir /usr/local/apache2/cgi-bin
+    Installing header files
+    Installing build system files
+    Installing man pages and online manual
+    mkdir /usr/local/apache2/man
+    mkdir /usr/local/apache2/man/man1
+    mkdir /usr/local/apache2/man/man8
+    mkdir /usr/local/apache2/manual
+    make[1]: Leaving directory `/root/httpd-2.2.29'
+    [root@edu httpd-2.2.29]# cd /usr/local/apache2/  #进入安装目录
+    [root@edu apache2]# ls   #发现httpd的文件已经被安装成功了
+    bin build cgi-bin error htdocs icons include lib logs man manual modules
+    [root@edu apache2]# cd bin  #进入可执行文件目录
+    [root@edu bin]# ls  
+    ab apu-1-config dbmmanage htcacheclean htpasswd logresolve
+    apachectl apxs envvars htdbm httpd rotatelogs
+    apr-1-config checkgid envvars-std htdigest httxt2dbm
+    [root@edu bin]# apachectl start  #启动httpd服务
+    [root@edu bin]# netstat -tnlp | grep 80   #查看80端口，发现80端口已经有httpd服务在监听，服务启动成功。也可以直接通过浏览器访问
+    tcp6 0 0 :::80 :::* LISTEN 58365/httpd
+    
+
+
+
+
+
+
+
+# 安装后的配置
+
+
+
+
+当然，光是这样安装成功有时候是不够的，因为目前我们的程序安装在/usr/local/apache2下，包括httpd的库文件、头文件、帮助文档等都在这个目录下，但是这个目录并没有输出给操作系统或者其他应用，所以当别人想要使用这些文件时将无从访问。我们大可以将安装文件路径放到系统路径中，比如/bin,/sbin,/lib,/etc等，但是如果这么做了，以后要卸载这个程序可是非常麻烦的，我们要将这个程序的安装文件一个一个找出来之后删除，如果像现在这样安装的话，以后只需要删除这个目录就能够完成卸载。
+
+
+
+
+## 将二进制程序目录输出至PATH路径
+
+
+
+
+因为在bash中，一般会将个人的PATH环境变量放在~/.bash_profile文件中配置，所以这里我们可以将二进制程序目录写在这个文件中。不过为了将来便于管理，我们可以将其放在/etc/profile.d/下，命名为*.sh，以后要卸载这个程序的时候只需要将这个文件删除就可以了，不需要修改配置文件。（bash在初始化时会读取并执行/etc/profile.d/目录下以.sh结尾的文件）
+
+
+
+    
+    [root@edu bin]# vim /etc/profile.d/apache2.sh  #在/etc/profile.d目录下创建一个apache2.sh
+    [root@edu bin]# cat /etc/profile.d/apache2.sh  #查看编辑后的文件
+    export PATH=/usr/local/apache2/bin:$PATH
+    [root@edu bin]# source /etc/profile.d/apache2.sh  #由于配置文件无法立即生效，于是使用source命令读取这个配置文件
+    [root@edu bin]# echo $PATH   #可以看见已经成功输出了httpd的bin目录
+    /usr/local/apache2/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/bin
+
+
+
+
+ 
+
+
+
+
+## 将库文件目录输出
+
+
+
+
+库文件也类似于二进制文件，只要在/etc/ld.so.conf.d目录下创建*.conf文件即可，在这个文件中写入需要输出的库文件路径，然后使用ldconfig [-v] 命令读取刚创建的文件，使系统重新生成缓存。
+
+
+
+    
+    [root@edu apache2]# vim /etc/ld.so.conf.d/apache2.conf   #在/etc/ld.so.conf.d目录下创建apache2.conf文件，并写入库文件路径
+    [root@edu apache2]# cat /etc/ld.so.conf.d/apache2.conf   #查看文件内容
+    /usr/local/apache2/lib
+    [root@edu apache2]# ldconfig  #重读配置文件，生成缓存
+    [root@edu apache2]# ls lib/   #观察apache2的lib目录下的库，发现有叫做libapr的库
+    apr.exp libapr-1.so libaprutil-1.la libexpat.a libexpat.so.0.5.0
+    aprutil.exp libapr-1.so.0 libaprutil-1.so libexpat.la pkgconfig
+    libapr-1.a libapr-1.so.0.5.1 libaprutil-1.so.0 libexpat.so
+    libapr-1.la libaprutil-1.a libaprutil-1.so.0.5.3 libexpat.so.0
+    [root@edu apache2]# ldconfig -v | grep libapr  #查看当前系统缓存的库，发现已经有libapr了
+     libaprutil-1.so.0 -> libaprutil-1.so.0.5.3
+     libapr-1.so.0 -> libapr-1.so.0.5.1
+     libaprutil-1.so.0 -> libaprutil-1.so.0.5.2
+     libapr-1.so.0 -> libapr-1.so.0.4.8
+    
+    
+
+
+
+
+ 
+
+
+
+
+## 将头文件目录输出
+
+
+
+
+输出头文件的方式很简单，一般头文件都放置在/usr/include目录下，所以只需要将头文件放置到该目录下即可。更简单的方法就是直接为头文件目录创建一个链接，将链接文件直接放置到/usr/include下即可。
+
+
+
+    
+    [root@edu apache2]# ln -sv include/ /usr/include/apache2  #为头文件目录创建一个软链接，将其放置到/usr/include中
+    ‘/usr/include/apache2’ -> ‘include/’
+    
+
+
+
+
+ 
+
+
+
+
+## 将帮助手册目录输出
+
+
+
+
+输出帮助手册的方式也很简单，只需要编辑/etc/man.config文件即可，在其中添加一行帮助文件所在目录即可立即生效。（在CentOS 7系统中为/etc/man_db.conf文件）
+
+
+
+    
+    [root@edu apache2]# vim /etc/man_db.conf
+    在其中添加一行
+    MANDATORY_MANPATH /usr/local/apache2/man
+    指示帮助文件所在目录
+    然后就可以使用man命令查看httpd所有的帮助文档了
+
+
+

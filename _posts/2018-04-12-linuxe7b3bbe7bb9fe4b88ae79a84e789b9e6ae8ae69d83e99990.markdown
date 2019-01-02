@@ -1,0 +1,464 @@
+---
+author: edmund
+comments: true
+date: 2018-04-12 03:18:38+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/04/12/linux%e7%b3%bb%e7%bb%9f%e4%b8%8a%e7%9a%84%e7%89%b9%e6%ae%8a%e6%9d%83%e9%99%90/
+slug: linux%e7%b3%bb%e7%bb%9f%e4%b8%8a%e7%9a%84%e7%89%b9%e6%ae%8a%e6%9d%83%e9%99%90
+title: Linux系统上的特殊权限
+wordpress_id: 174
+categories:
+- Linux随笔
+post_format:
+- 日志
+tags:
+- 命令
+- 用户权限管理
+---
+
+## 一、Linux的进程安全上下文
+
+
+
+
+在[Linux权限管理](http://118.25.17.78/topics/162)中，我们提到过进程和权限的关系，这里再来大概回顾一下。
+
+
+
+
+在Linux中，每个文件都拥有三组权限模型，分别对应属主（user）、属组（group）和其它（other），每组权限模型都有三位权限，分别为读（Readable）、写（Writeable）、执行（eXecuteable）权限。
+
+
+
+
+而当一个用户执行了一个文件，且该用户对该文件具有执行权限，那么该文件就会被操作系统发起为一个进程。我们知道，进程是用户的代理，所以，进程应该以该用户的身份运行。而该进程访问系统资源时，进程是否有权限访问就取决于该用户是否有权限访问。
+
+
+
+
+例如：cat进程以edmund用户的身份运行，访问/etc/passwd文件，由于edmund用户既不是/etc/passwd文件的属主（user），也不是/etc/passwd文件的属组（group），所以edmund被分配到其他（other）用户的权限，而其他用户对/etc/passwd有读（r）权限，所以进程可以正确运行。
+
+
+
+
+
+<blockquote>
+
+> 
+> [edmund@node1 ~]$ cat /etc/passwd
+root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/bin:/sbin/nologin
+> 
+> 
+</blockquote>
+
+
+
+
+而cat程序再以edmund用户身份运行，访问/etc/shadow文件的时候，由于edmund用户对应的是other的身份，而other对/etc/shadow没有任何权限，所以cat进程无法访问/etc/shadow文件。
+
+
+
+
+
+<blockquote>
+
+> 
+> [edmund@node1 ~]$ cat /etc/shadow
+cat: /etc/shadow: Permission denied
+> 
+> 
+</blockquote>
+
+
+
+
+## 二、特殊权限：SUID
+
+
+
+
+相信大家都对passwd这个命令很熟悉，这个命令可以被任何一个用户执行，用来修改自己的密码，当然这里不提root用户。
+
+
+
+
+但是不知道大家有没有注意到，passwd命令在修改密码的时候，需要从/etc/shadow文件中读取原密码，然后向/etc/shadow中写入新密码。
+
+
+
+
+但是我们知道，普通用户对于/etc/shadow这个文件并没有任何权限，既不能读，也不能写，所以讲道理，我们passwd命令的执行应该是会失败的，因为passwd程序启动的进程会以发起者的身份运行。但是，但是，我们的经验告诉我们，我们普通用户修改密码的操作确实是成功的，这是为什么呢？
+
+
+
+
+为了解释这个问题，我们先来查看一下passwd命令的权限。
+
+
+
+
+
+<blockquote>
+
+> 
+> [edmund@node1 ~]$ ls -l /bin/passwd
+-rwsr-xr-x. 1 root root 27832 Jun 10 2014 /bin/passwd
+> 
+> 
+</blockquote>
+
+
+
+
+乍一看没什么特别的，但是仔细看第三位权限，居然是s权限！这个权限是什么？权限不是只有rwx吗？
+
+
+
+
+不难想到，这个权限应该就是我要讲的特殊权限SUID了，那么什么是SUID权限呢。
+
+
+
+
+我们知道，在普通的可执行程序被发起为一个进程的时候，这个进程会以进程发起者的身份运行。而SUID的作用就是，如果一个可执行程序被设置了SUID权限，当它被发起为一个进程后，该进程会以该可执行文件的属主（user）的身份运行，而不是以进程发起者的身份运行。
+
+
+
+
+这就意味着，如果一个程序的属主是root，且该程序被设置了SUID权限，且发起该程序的用户对该程序具有执行权限，那么该进程会以root的身份运行。
+
+
+
+
+所以，我们就能理解了，因为所有用户对passwd程序拥有执行程序，所以该程序会被发起成为一个进程，由于passwd程序被设置了SUID权限，所以passwd会以属主（user）的身份（root）运行，由于root拥有/etc/shadow文件的所有权限，所以用户可以成功修改自己的密码。
+
+
+
+
+_结论：被设置了SUID的可执行文件在被发起成为一个进程时，会以可执行文件的属主（user）的身份运行，而不会以进程发起者的身份运行。_
+
+
+
+
+
+## 三、特殊权限：SGID
+
+
+
+
+在Linux多用户多任务的环境下，我们经常会多人协作做一个项目，这个时候就需要将项目小组中的成员添加到同一个用户组中，然后创建一个存放项目文件的目录，修改该目录的属组（group）为项目组的用户组，并给予用户组读、写、执行权限（读权限让用户可以查看该目录中的文件。写权限让用户可以在该目录下创建和删除文件。执行权限让用户可以进入该目录。）。
+
+
+
+
+这样子看起来已经解决了多人协作的问题了，很完美，但是我们来看一下下面的操作。
+
+
+
+
+
+<blockquote>
+
+> 
+> [user1@node1 ~]$ cd /tmp/project/
+[user1@node1 project]$ ls -l
+total 8
+-rw-rw-r--. 1 user1 user1 0 Apr 11 22:32 user1.txt
+-rw-rw-r--. 1 user2 user2 4 Apr 11 22:33 user2.txt
+-rw-rw-r--. 1 user3 user3 7 Apr 11 22:34 user3.txt
+[user1@node1 project]$ mkdir user1
+[user1@node1 project]$ ls -l
+total 8
+drwxrwxr-x. 2 user1 user1 6 Apr 11 22:36 user1
+-rw-rw-r--. 1 user1 user1 0 Apr 11 22:32 user1.txt
+-rw-rw-r--. 1 user2 user2 4 Apr 11 22:33 user2.txt
+-rw-rw-r--. 1 user3 user3 7 Apr 11 22:34 user3.txt
+> 
+> 
+</blockquote>
+
+
+
+
+每个小组成员创建的文件的属主属组都是他自己，而小组中其他成员对那个文件都只有读（r）的权限，如果需要修改或者执行一个文件就变得很麻烦。而对于小组成员创建的目录，其他成员不具有写（w）权限，导致其他成员都无法在该目录中创建文件。
+
+
+
+
+也许你会说，我可以使用**newgrp**临时切换一下有效组，然后创建文件不就好了。
+
+
+
+
+
+<blockquote>
+
+> 
+> [user1@node1 project]$ newgrp project
+[user1@node1 project]$ touch user1.newgrp
+[user1@node1 project]$ mkdir user1.newdir
+[user1@node1 project]$ ls -l
+total 8
+drwxrwxr-x. 2 user1 user1 6 Apr 11 22:36 user1
+drwxr-xr-x. 2 user1 project 6 Apr 11 22:39 user1.newdir
+-rw-r--r--. 1 user1 project 0 Apr 11 22:39 user1.newgrp
+-rw-rw-r--. 1 user1 user1 0 Apr 11 22:32 user1.txt
+-rw-rw-r--. 1 user2 user2 4 Apr 11 22:33 user2.txt
+-rw-rw-r--. 1 user3 user3 7 Apr 11 22:34 user3.txt
+> 
+> 
+</blockquote>
+
+
+
+
+这样子确实可行，但是仍然麻烦，需要用户手动切换有效组，做完后还需要手动退出有效组。
+
+
+
+
+这个时候我们就可以想到使用特殊权限SGID。虽然文件和目录都可以设置SGID权限，但是文件设置SGID的意义不大，类似于SUID，让程序以文件属组（group）的身份运行。所以我这里只讲重要的，对目录设置SGID。
+
+
+
+
+当一个目录被设置了SGID后，任何人在该目录中创建的文件（包括目录），其属组（group）均为目录的属组（group）。其效果就是上面使用newgrp后创建文件的效果，这里就不再演示。
+
+
+
+
+_结论：任何人在被设置了SGID的目录中创建文件时，无论其当前有效组为何，新文件的属组（group）均为该目录的属组（group）。_
+
+
+
+
+
+## 四、特殊权限：Sticky BIT（SBIT）
+
+
+
+
+我们知道，如果用户对某个目录具有写（w）权限，那么该用户可以在该目录下任意创建和删除文件，即使这些文件不属于他。这就使得Linux文件系统处于极大地不安全之中，也是Linux权限模型的一个漏洞。
+
+
+
+
+而SBIT的作用可以作用于一个目录上。如果一个目录设置了SBIT权限，那么在该目录下，对该目录拥有写（w）权限的用户只能创建文件和删除自己的文件，而不能删除其他人的文件，这里不提root用户。
+
+
+
+
+换句话说，某用户如果对某目录具有写（w）权限，那么他可以在该目录下随意删除、重命名、移动他人的文件。如果该目录加上了SBIT权限，则该用户只能删除、重命名、移动自己的文件，而无法随意操作其他人的文件。
+
+
+
+
+
+## 五、特殊权限SUID、SGID、SBIT的设置
+
+
+
+
+和其它的普通权限一样，特殊权限也可以使用chmod来设置，并且支持符号方式设置和八进制数字方式设置。
+
+
+
+
+
+### 1、符号方式设置特殊权限
+
+
+
+
+由于文件的9位权限已经定下来了，而新添加三位作为特殊权限位显然不现实，所以特殊权限位会在原本三组权限中分别占用一位。
+
+
+
+
+SUID占用属主（user）的x权限。SGID占用属组（group）的x权限。SBIT占用其他人（other）的x权限。所以，特殊权限的设置也是如此。
+
+
+
+
+
+#### 设置SUID
+
+
+
+
+**chmod u+s FILE**
+
+
+
+
+[root@node1 test]# cp /bin/cat .
+[root@node1 test]# ls
+cat
+[root@node1 test]# chmod u+s cat
+[root@node1 test]# ls -l
+total 56
+-rwsr-xr-x. 1 root root 54080 Apr 11 23:06 cat
+
+
+
+
+为cat命令设置SUID权限。
+
+
+
+
+[edmund@node1 /]$ /tmp/test/cat /etc/shadow
+root:$6$M9lQaTba$NaQaEPey2wIl5VTrz.2d4IyGFQZa0.UGSw2LZkgpTszxYV4c4fpDFhFhi12.Y5vNUQmKvGxqp.hAnQd1ofJRI1:17609:0:99999:7:::
+
+
+
+
+普通用户也可以通过这个cat命令查看原本没有权限访问的/etc/shadow文件。（做完实验后记得删掉这个文件，非常危险，因为cat命令是以root用户的身份运行的，所以cat命令可以通过重定向操作修改/etc/shadow文件以及其他任何文件。）
+
+
+
+
+
+#### 设置SGID
+
+
+
+
+**chmod g+s DIRECTORY**
+
+
+
+
+[root@node1 tmp]# chmod g+s project/
+[root@node1 tmp]# ls -ld project/
+drwxrwsr-x. 4 root project 110 Apr 11 22:39 project/
+
+
+
+
+
+#### 设置SBIT
+
+
+
+
+**chmod o+t DIRECTORY**
+
+
+
+
+[root@node1 tmp]# chmod o+t project/
+[root@node1 tmp]# ls -ld project/
+drwxrwsr-t. 4 root project 110 Apr 11 22:39 project/
+
+
+
+
+注意：就像上面讲的，三个特殊权限会占用三组权限的x权限位，所以如果设置了特殊权限，用户将无从得知该文件原本的x权限是何。为了能够让用户知道原本该文件是否具有x权限，所以特殊权限会有不同的展示方式。如果被占用的权限位原本就被设置，那么特殊权限会以小写展示，而如果被占用的权限位原本没有被设置，那么特殊权限会以大写展示。
+
+
+
+
+
+<blockquote>
+
+> 
+> [root@node1 tmp]# ls -ld project/
+drwxrwsr-t. 4 root project 110 Apr 11 22:39 project/
+[root@node1 tmp]# chmod g-x,o-x project/
+[root@node1 tmp]# ls -ld project/
+drwxrwSr-T. 4 root project 110 Apr 11 22:39 project/
+> 
+> 
+</blockquote>
+
+
+
+
+### 2、八进制数字方式设置特殊权限
+
+
+
+
+我们能够发现，特殊权限刚好有3个，所以和普通权限rwx相同，特殊权限sst也可以用一位八进制数字表示其8种变化。
+
+
+
+
+**权限           二进制   八进制**
+
+
+
+
+**--- --- ---     000         0**
+
+
+
+
+**--- --- --t     001         1**
+
+
+
+
+**--- --s ---     010         2**
+
+
+
+
+**--- --s --t     011          3**
+
+
+
+
+**--s --- ---     100         4**
+
+
+
+
+**--s --- --t     101          5**
+
+
+
+
+**--s --s ---    110          6**
+
+
+
+
+**--s --s --t    111           7**
+
+
+
+
+这张表不能够精确表达其意义，只为能够方便大家理解。
+
+
+
+
+所以，我们可以通过4位八进制数字来同时设置特殊权限和普通权限。这也是为什么umask有4位的原因了，第一位其实就是特殊权限。
+
+
+
+
+
+#### 设置特殊权限SUID、SGID和SBIT
+
+
+
+
+**chmod #### FILE**
+
+
+
+
+[root@node1 tmp]# ls -ld project/
+drwxrwSr-T. 4 root project 110 Apr 11 22:39 project/
+[root@node1 tmp]# chmod 6776 project/
+[root@node1 tmp]# ls -ld project/
+drwsrwsrw-. 4 root project 110 Apr 11 22:39 project/
+
+
+
+
+6776的第一位6就是特殊权限位，其对应的特殊权限是SUID和SGID，后面的三位就是普通权限位，所以就能看到上述结果。

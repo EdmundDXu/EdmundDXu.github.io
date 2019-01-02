@@ -1,0 +1,560 @@
+---
+author: edmund
+comments: true
+date: 2018-06-19 10:55:38+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/06/19/linux%e8%bf%9b%e7%a8%8b%e7%ae%a1%e7%90%86%e4%b9%8b%e4%bd%9c%e4%b8%9a%e6%8e%a7%e5%88%b6/
+slug: linux%e8%bf%9b%e7%a8%8b%e7%ae%a1%e7%90%86%e4%b9%8b%e4%bd%9c%e4%b8%9a%e6%8e%a7%e5%88%b6
+title: Linux进程管理之作业控制
+wordpress_id: 418
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- bash
+- linux
+- 作业管理
+- 命令
+- 进程管理
+---
+
+# [进程组](https://en.wikipedia.org/wiki/Process_group)（process group）
+
+
+
+
+进程组顾名思义，就是一组进程。一般来说，一组进程会由管道组成，这组进程中的任何一个子进程都属于同一个进程组。一个进程组收到的信号会被发送给进程组中的所有进程。而类似的还有会话（session）的概念，会话由一组进程组构成，一个会话一旦断开，则属于该会话的所有进程组都会被终止。需要注意的是，一个进程组无法从一个会话迁移到另一个会话。
+
+
+
+
+# [作业控制](https://en.wikipedia.org/wiki/Job_control_(Unix))（job control）
+
+
+
+
+在Unix和类Unix操作系统中，作业控制指的是通过一个shell来管理作业，而一个作业（job）则指代一个进程组（process group）。基础的作业控制包括 : 挂起、恢复、结束一个作业/进程组中的所有进程，当然也可以通过信号来实现更为复杂的作业控制。需要注意的是，这里的作业与通常的作业控制有所不同，通常作业控制指代的是批处理系统中的一批需要连续执行的任务。
+
+
+
+
+在讲作业控制之前，我们回想一下进程控制。在我们登录进一个终端，获得一个用户身份时，会获得一个login shell进程，在login shell进程下，发起一个进程很容易，只需要让一个新进程取代shell取得终端的控制权，在新进程运行结束后，将终端的控制权交还给shell，就可以实现一个进程的运行。在进程运行的过程中，如果需要对进程进行操作，可以向进程发送信号，比如ctrl+c可以终止当前进程。
+
+
+
+
+但是，如果我们想在进程运行的同时使用终端做其他事情该怎么办？这就引出了前台进程和后台进程。一个正在运行但是不接收终端输入的进程称为后台进程，而反之，一个正在运行且接收终端输入的进程称为前台进程。正是作业控制机制使得进程能够运行在前台和后台。说得更详细一些，作业控制允许用户在后台发起进程、将运行中的进程送到后台、将后台的进程送到前台、停止或终止进程。
+
+
+
+
+在讲上面的进程控制的概念时，你会发现我们针对的都是某一个进程，如果将这个概念放到作业控制中，那么一个进程就应该被放大到一个进程组，或者说一个作业（job），比如前面的前台进程和后台进程就可以变成前台作业和后台作业。之所以存在进程组，是因为进程可能会创建子进程，而且一句shell命令也可以通过管道连接多个进程。
+
+
+
+
+比如，有这样一句shell命令 : **grep title somefile.txt | sort | less** 。这个命令从somefile.txt文件中取出包含title这个关键字的文本行，然后将文本行排序并将结果显示在一页中。这一个命令创建了三个进程，grep、sort和less。而 grep title somefile.txt | sort | less 则称为一个job。
+
+
+
+
+总而言之，作业控制允许用户将一系列相关的进程通过一个实体对象一并管理。而和进程一样，为了管理作业，每个作业都需要有一个识别码，称为**job ID**，因为作业控制一般都是由shell提供的，所以这个job ID也是由shell使用。job ID以%开头，后面跟上一个数字n，也就是说，%n就代表job n，而有一个保留的%%代表当前job。
+
+
+
+
+
+
+
+# 查看后台作业
+
+
+
+
+jobs命令可以查看所有的后台作业，同时会显示后台作业的job ID和job state（running或者stopped）。
+
+
+
+    
+    [root@edu ~]# cp /etc/fstab .    #随意复制一个文件到当前目录
+    [root@edu ~]# vim fstab          #使用vim编辑这个文件
+                                     #在vim界面下键入ctrl+z组合键，将vim进程送到后台
+    [1]+  Stopped                 vim fstab
+    [root@edu ~]# vmstat 1           #启动vmstat进程
+    procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+     r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+     1  0      0 639884   2224 235232    0    0     7     4   62   45  0  0 100  0  0
+     0  0      0 639884   2224 235232    0    0     0     0   96   70  0  1 100  0  0
+    ^Z                               #键入ctrl+z组合键，将vmstat进程送到后台
+    [2]+  Stopped                 vmstat 1
+    [root@edu ~]# top                #启动top进程
+    top - 13:46:42 up  3:16,  2 users,  load average: 0.00, 0.01, 0.05
+    Tasks: 111 total,   1 running, 108 sleeping,   2 stopped,   0 zombie
+    %Cpu(s):  0.0 us,  3.0 sy,  0.0 ni, 97.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+    KiB Mem :   999720 total,   638796 free,   123192 used,   237732 buff/cache
+    KiB Swap:   975868 total,   975868 free,        0 used.   688364 avail Mem 
+    
+       PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND                    
+         1 root      20   0   45880   6188   3856 S   0.0  0.6   0:01.31 systemd                    
+         2 root      20   0       0      0      0 S   0.0  0.0   0:00.01 kthreadd                   
+         3 root      20   0       0      0      0 S   0.0  0.0   0:00.19 ksoftirqd/0                
+         5 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kworker/0:0H               
+         7 root      rt   0       0      0      0 S   0.0  0.0   0:00.00 migration/0                
+         8 root      20   0       0      0      0 S   0.0  0.0   0:00.00 rcu_bh                     
+         9 root      20   0       0      0      0 S   0.0  0.0   0:06.24 rcu_sched                  
+        10 root      rt   0       0      0      0 S   0.0  0.0   0:00.07 watchdog/0                 
+        11 root      rt   0       0      0      0 S   0.0  0.0   0:00.06 watchdog/1                 
+        12 root      rt   0       0      0      0 S   0.0  0.0   0:00.00 migration/1                
+        13 root      20   0       0      0      0 S   0.0  0.0   0:00.02 ksoftirqd/1                
+        15 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kworker/1:0H               
+        17 root      20   0       0      0      0 S   0.0  0.0   0:00.01 kdevtmpfs                  
+        18 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 netns                      
+        19 root      20   0       0      0      0 S   0.0  0.0   0:00.00 khungtaskd                 
+        20 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 writeback                  
+        21 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kintegrityd                
+        22 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 bioset                     
+        23 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 kblockd                    
+        24 root       0 -20       0      0      0 S   0.0  0.0   0:00.00 md                         
+        30 root      20   0       0      0      0 S   0.0  0.0   0:00.00 kswapd0                    
+    [3]+  Stopped                 top                    #键入ctrl+z将top进程送到后台
+    [root@edu ~]# jobs               #查看所有的后台进程
+    [1]   Stopped                 vim fstab
+    [2]-  Stopped                 vmstat 1
+    [3]+  Stopped                 top
+
+
+
+
+
+
+
+观察一下jobs命令的输出，可以看见有三列。
+
+
+
+
+第一列表示的是job ID，比如top的job ID就是%3，而3后面的+表示该作业为默认作业，2后面的-表示该作业即将成为默认作业，当作业3离开后台后，作业2即成为默认作业。默认作业表示在不指定对哪个作业进行操作时，会默认被操作的作业。默认作业会在下面讲到。
+
+
+
+
+第二列表示的是作业的状态，running表示正在后台运行，stopped表示停止状态，有时候也能看到terminated，这表示作业被终止，正在处理后续工作，一旦后续工作处理完该作业就会消失。
+
+
+
+
+第三列表示的是发起作业使用的命令，比如作业2，发起作业时在shell下键入了vmstat 1，则在第三列则会显示vmstat 1。
+
+
+
+
+# 将命令送至后台
+
+
+
+
+从上面的实验中我们可以知道，我们可以通过ctrl+z组合键将当前正在运行的前台作业送到后台，并且在送到后台后，该进程会进入stopped状态。
+
+
+
+
+而这只针对已经在运行的进程，如果需要在发起一个进程的同时将其送入后台，则需要使用 & 。在需要执行的命令的最后加上 & 则可以将该命令送至后台运行，注意，命令和&之前要有空格分隔。
+
+
+
+    
+    [root@edu ~]# tail -f fstab &            #在tail -f fstab的最后加上 &, 可以将命令送至后台运行
+    [4] 1525
+    [root@edu ~]# # Created by anaconda on Thu Apr 19 18:45:35 2018
+    #
+    # Accessible filesystems, by reference, are maintained under '/dev/disk'
+    # See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+    #
+    UUID=c340f1a3-e07e-40e8-8ecc-29ebd0480fe0 /                       btrfs   subvol=root     0 0
+    UUID=616bbfe3-4356-4c91-a0a9-86c83fc097de /boot                   xfs     defaults        0 0
+    UUID=c340f1a3-e07e-40e8-8ecc-29ebd0480fe0 /home                   btrfs   subvol=home     0 0
+    UUID=f0b1e78c-38fb-4036-afcb-9857b31498fd swap                    swap    defaults        0 0
+    /dev/sr0				/media			iso9660	  defaults,ro	  0 0	 
+     
+    [root@edu ~]# jobs           #查看后台的进程，可以发现tail -f fstab已经进入后台，且为running状态
+    [1]   Stopped                 vim fstab
+    [2]-  Stopped                 vmstat 1
+    [3]+  Stopped                 top
+    [4]   Running                 tail -f fstab &
+    
+
+
+
+
+
+
+
+# 将后台作业送至前台
+
+
+
+
+使用fg命令可以将后台作业送回至前台运行，命令用法很简单 : **fg [Job_ID]** 。表示将指定作业号的作业送到前台运行。
+
+
+
+
+可以发现，Job_ID参数是可以省略的，如果省略了Job ID，那么就会将默认作业送到前台运行。通过jobs命令看到的作业号后面有+的即为默认作业。
+
+
+
+    
+    [root@edu ~]# jobs
+    [1]   Stopped                 vim fstab
+    [2]-  Stopped                 vmstat 1
+    [3]+  Stopped                 top
+    [4]   Running                 tail -f fstab &
+    [root@edu ~]# fg %3        #将作业3（top）送至前台
+    [root@edu ~]# jobs         #退出前台的top后查看后台作业，发现作业3已经结束
+    [1]-  Stopped                 vim fstab
+    [2]+  Stopped                 vmstat 1
+    [4]   Running                 tail -f fstab &
+    [root@edu ~]# fg           #省略job id，便会将默认作业（此处为vmstat 1）送至前台
+    vmstat 1
+     1  0      0 626652   2224 249672    0    0     0  1772 38933 27443  0  0 100  0  0
+    ^C
+    [root@edu ~]# jobs         #退出vmstat 1后查看后台作业，发现作业2也已经结束
+    [1]+  Stopped                 vim fstab
+    [4]-  Running                 tail -f fstab &
+    
+
+
+
+
+
+
+
+# 让后台作业继续在后台运行
+
+
+
+
+使用bg命令即可让后台作业在后台继续运行（running），bg的用法和fg一样，后面可以跟上作业号，也可以不跟，如果不指定作业号就会让默认作业在后台继续运行。
+
+
+
+    
+    [root@edu ~]# vmstat 1 &> /dev/null      #将vmstat 1作为job提交至后台作业，为了避免频繁的输出而影响操作，将输出重定向至/dev/null
+    ^Z
+    [5]+  Stopped                 vmstat 1 &>/dev/null
+    [root@edu ~]# jobs             #看到vmstat 1已经处于后台，且为stopped
+    [1]-  Stopped                 vim fstab
+    [4]   Running                 tail -f fstab &
+    [5]+  Stopped                 vmstat 1 &>/dev/null
+    [root@edu ~]# bg               #将默认作业（vmstat 1）变成运行（running）状态，即在后台运行
+    [5]+ vmstat 1 &>/dev/null &
+    [root@edu ~]# jobs             #可以看到，vmstat 1已经变成了running
+    [1]+  Stopped                 vim fstab
+    [4]   Running                 tail -f fstab &
+    [5]-  Running                 vmstat 1 &>/dev/null &
+
+
+
+
+
+
+
+# 终止后台作业
+
+
+
+
+如果你有注意上一章讲到的kill命令，你会发现其实bash中内置了一个kill命令，且如果不做指定的话，默认就会使用bash中内置的kill命令。
+
+
+
+
+由于是bash的内置命令，所以kill可以接收job id作为参数，也就是说，可以使用kill向后台作业发送信号。那么终止一个作业也就很容易了， kill命令默认会发送SIGTERM信号终止作业。
+
+
+
+
+这里需要注意的是，对于stopped的作业，由于处于休眠状态，所以不会收到任何信号，直到作业退出stopped状态，之前发送的信号才会生效。
+
+
+
+    
+    [root@edu ~]# jobs 
+    [1]-  Stopped                 vim fstab
+    [4]   Running                 tail -f fstab &
+    [5]+  Running                 vmstat 1 &>/dev/null &
+    [root@edu ~]# kill %1         #终止作业1
+    
+    [1]+  Stopped                 vim fstab
+    [root@edu ~]# jobs            #发现作业1没有被终止
+    [1]+  Stopped                 vim fstab
+    [4]   Running                 tail -f fstab &
+    [5]-  Running                 vmstat 1 &>/dev/null &
+    [root@edu ~]# jobs            #再次查看仍然没有被终止，这是因为stopped的作业是无法接受信号的，我们需要让它退出stopped
+    [1]+  Stopped                 vim fstab
+    [4]   Running                 tail -f fstab &
+    [5]-  Running                 vmstat 1 &>/dev/null &
+    [root@edu ~]# fg              #使用fg命令让作业1退出stopped
+    vim fstab
+    Vim: Caught deadly signal TERM
+    Vim: Finished.
+    Terminated
+    [root@edu ~]# jobs            #可以看到作业1被终止了
+    [4]-  Running                 tail -f fstab &
+    [5]+  Running                 vmstat 1 &>/dev/null &
+    [root@edu ~]# kill -SIGSTOP %5        #同样的，也可以发送其他信号，比如SIGSTOP让一个作业暂停
+    
+    [5]+  Stopped                 vmstat 1 &>/dev/null
+    [root@edu ~]# jobs            #可以看到running的作业5变成了stopped
+    [4]-  Running                 tail -f fstab &
+    [5]+  Stopped                 vmstat 1 &>/dev/null
+    [root@edu ~]# kill -SIGCONT %5        #也可以发送SIGCONT让一个作业继续运行
+    [root@edu ~]# jobs            #可以看到stopped的作业5变成了running
+    [4]-  Running                 tail -f fstab &
+    [5]+  Running                 vmstat 1 &>/dev/null &
+    
+
+
+
+
+
+
+
+# nohup命令
+
+
+
+
+在讲nohup命令之前，我们先来了解一下SIGHUP这个信号。
+
+
+
+
+## SIGHUP信号（该信号的默认动作是终止收到该信号的进程）
+
+
+
+
+1、终端关闭时，该信号会被发送到 session 首进程（session leader），然后session leader会阻断这个信号，并让与该终端关联的所有进程组恢复运行（避免有stopped的进程组无法收到SIGHUP信号），最后向进程组发送SIGHUP信号，终止这些进程组/作业。
+
+
+
+
+2、session首进程（session leader）退出时，该信号被发送到该 session 中的前台进程组中的每一个进程，但不会发送给后台进程组中的进程。
+
+
+
+
+3、若父进程退出导致进程组成为孤儿进程组，且该进程组中有进程处于停止状态（收到SIGSTOP或SIGTSTP信号），该信号会被发送到该进程组中的每一个进程。
+
+
+
+
+## 注意点:
+
+
+
+
+终端关闭的情景如断网或者手动关闭了会话窗口，这时即便你的作业在后台运行，仍然会被 SIGHUP 信号中断。（见SIGHUP信号第1点）。
+
+
+
+
+session 首进程退出则是你使用 exit 或者 logout 命令正常退出终端，这种退出并不会向后台作业发送 SIGHUP 信号。
+
+
+
+
+ 
+
+
+
+
+从上面的讲解，我们会发现一旦session leader退出（例如ssh连接中断），该session下的所有进程组都会被终止，即使你的命令提交为后台作业也无济于事。假如你使用ssh连接到远程服务器进行一些费时间的操作（比如编译），这个时候由于网络环境不好或者停电，你的ssh连接突然断开了，那么编译过程就会终止，也就是说你之前的操作可能前功尽弃（编译一些大型程序，比如linux内核甚至需要数个小时不止）。这都是因为这些作业都和终端相关，而且无法捕获SIGHUP信号。
+
+
+
+
+相信大家已经知道我接下来要讲的了，没错，nohup命令可以使进程无视SIGHUP信号，正如其名no hangup。
+
+
+
+
+nohup命令的使用也非常简单，在需要运行的命令前加上nohup命令即可。nohup命令可以使进程免疫SIGHUP信号，并且将进程的输出重定向至文件中（默认为当前目录下的nohup.out文件，如果失败的话，就会重定向至$HOME/nohup.out文件中）。如果需要手动指定输出重定向的位置，只需要使用 **nohup COMMAND > FILE** 即可。
+
+
+
+
+
+
+
+## 使用exit或者logout正常退出的情况
+
+
+
+
+### 终端 : pts/0
+
+
+
+    
+    [root@edu ~]# tty         #查看当前终端
+    /dev/pts/0
+    [root@edu ~]# tail -f fstab &          #将tail命令送至后台作业
+    [1] 7479
+    [root@edu ~]# # Created by anaconda on Thu Apr 19 18:45:35 2018
+    #
+    # Accessible filesystems, by reference, are maintained under '/dev/disk'
+    # See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+    #
+    UUID=c340f1a3-e07e-40e8-8ecc-29ebd0480fe0 /                       btrfs   subvol=root     0 0
+    UUID=616bbfe3-4356-4c91-a0a9-86c83fc097de /boot                   xfs     defaults        0 0
+    UUID=c340f1a3-e07e-40e8-8ecc-29ebd0480fe0 /home                   btrfs   subvol=home     0 0
+    UUID=f0b1e78c-38fb-4036-afcb-9857b31498fd swap                    swap    defaults        0 0
+    /dev/sr0				/media			iso9660	  defaults,ro	  0 0	 
+    
+    [root@edu ~]# jobs                     #查看作业列表，发现tail作业已经在运行了，下面查看终端pts1的情况
+    [1]+  Running                 tail -f fstab &
+    [root@edu ~]# exit                     #使用exit正常退出终端，接下来查看
+    logout
+    
+
+
+
+
+### 终端 : pts/1
+
+
+
+    
+    [root@edu ~]# ps aux | grep tail      #在tail作业发起后，在pts/1终端查看，发现tail作业是关联于pts/0上的
+    root       7479  0.0  0.0 107944   608 pts/0    S    16:38   0:00 tail -f fstab
+    root       7481  0.0  0.0 112660   968 pts/1    S+   16:39   0:00 grep --color=auto tail
+    [root@edu ~]# ps aux | grep tail #在pts/0终端使用exit正常退出后，所有和终端相关联的前台作业都会收到SIGHUP信号，但是由于tail为后台作业，所以并不会收到SIGHUP信号。
+    root       7479  0.0  0.0 107944   608 ?        S    16:38   0:00 tail -f fstab                   #但是可以发现tail作业的关联终端以及没有了。
+    root       7483  0.0  0.0 112660   972 pts/1    S+   16:39   0:00 grep --color=auto tail
+    
+
+
+
+
+
+
+
+
+
+
+## 终端异常退出的情况
+
+
+
+
+### 终端 : pts/0
+
+
+
+    
+    [root@edu ~]# tail -f fstab &       #将tail命令送至后台作业
+    [1] 7508
+    # Created by anaconda on Thu Apr 19 18:45:35 2018
+    #
+    # Accessible filesystems, by reference, are maintained under '/dev/disk'
+    # See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+    #
+    UUID=c340f1a3-e07e-40e8-8ecc-29ebd0480fe0 /                       btrfs   subvol=root     0 0
+    UUID=616bbfe3-4356-4c91-a0a9-86c83fc097de /boot                   xfs     defaults        0 0
+    UUID=c340f1a3-e07e-40e8-8ecc-29ebd0480fe0 /home                   btrfs   subvol=home     0 0
+    UUID=f0b1e78c-38fb-4036-afcb-9857b31498fd swap                    swap    defaults        0 0
+    /dev/sr0				/media			iso9660	  defaults,ro	  0 0	 
+    [root@edu ~]# jobs                 #查看作业列表，发现tail作业已经在运行了，下面查看终端pts1的情况
+    [1]+  Running                 tail -f fstab &
+    [root@edu ~]# tty           #查看当前终端
+    /dev/pts/0
+    
+
+
+
+
+### 终端 : pts/1
+
+
+
+    
+    [root@edu ~]# ps aux | grep tail     #在tail作业发起后，在pts/1终端查看，发现tail作业是关联于pts/0上的。接下来直接关闭pts/0终端的会话窗口。
+    root       7508  0.0  0.0 107944   608 pts/0    S    16:46   0:00 tail -f fstab
+    root       7514  0.0  0.0 112660   968 pts/1    S+   16:46   0:00 grep --color=auto tail
+    [root@edu ~]# ps aux | grep tail     #在pts/0终端的会话窗口被直接关闭后，所有和终端相关联的前后台作业都会收到SIGHUP信号，所以tail作业被终止。
+    root       7517  0.0  0.0 112660   972 pts/1    S+   16:48   0:00 grep --color=auto tail
+    
+
+
+
+
+
+
+
+## 使用nohup命令后再使终端异常退出的情况
+
+
+
+
+### 终端 : pts/0
+
+
+
+    
+    [root@edu ~]# tty
+    /dev/pts/0
+    [root@edu ~]# nohup tail -f fstab &          #使用nohup命令启动tail作业
+    [1] 7540
+    [root@edu ~]# nohup: ignoring input and appending output to ‘nohup.out’
+    
+    [root@edu ~]# jobs                     #查看tail作业
+    [1]+  Running                 nohup tail -f fstab &
+
+
+
+
+### 终端 : pts/1
+
+
+
+    
+    [root@edu ~]# ps aux | grep tail      #在tail作业发起后，在pts/1终端查看，发现tail作业是关联于pts/0上的。接下来直接关闭pts/0终端的会话窗口。
+    root       7540  0.0  0.0 107944   612 pts/0    S    16:51   0:00 tail -f fstab
+    root       7548  0.0  0.0 112660   972 pts/1    S+   16:52   0:00 grep --color=auto tail
+    [root@edu ~]# ps aux | grep tail      #在pts/0终端的会话窗口被直接关闭后，所有和终端相关联的前后台作业都会收到SIGHUP信号，由于tail作业使用nohup命令启动，免疫SIGHUP信号，所以不会被终止。
+    root       7540  0.0  0.0 107944   612 ?        S    16:51   0:00 tail -f fstab                #但是可以发现tail作业的关联终端以及没有了。
+    root       7550  0.0  0.0 112660   968 pts/1    S+   16:54   0:00 grep --color=auto tail
+
+
+
+
+
+
+
+# reset
+
+
+
+
+有时候在进行作业或者进程管理的时候，或者是其他异常情况下，会出现终端的输出有些问题，比如挂起dstat进程后终端的输出颜色会变成灰色。这个时候可以使用reset命令重新初始化终端。而不需要关闭终端再重新打开。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

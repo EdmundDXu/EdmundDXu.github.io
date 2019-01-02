@@ -1,0 +1,2365 @@
+---
+author: edmund
+comments: true
+date: 2018-05-21 09:17:00+00:00
+layout: post
+link: http://118.25.17.78/blog/2018/05/21/linux%e5%8c%85%e7%ae%a1%e7%90%86%e4%b9%8brpm%e5%8c%85%e7%ae%a1%e7%90%86%e4%b8%8eyum%e7%9a%84%e4%bd%bf%e7%94%a8/
+slug: linux%e5%8c%85%e7%ae%a1%e7%90%86%e4%b9%8brpm%e5%8c%85%e7%ae%a1%e7%90%86%e4%b8%8eyum%e7%9a%84%e4%bd%bf%e7%94%a8
+title: Linux包管理之RPM包管理与YUM的使用
+wordpress_id: 328
+categories:
+- Linux技术
+post_format:
+- 日志
+tags:
+- CentOS7
+- linux
+- RPM
+- YUM
+- 包管理
+---
+
+# 一、包管理简介
+
+
+
+
+在过去，软件的发布都是通过直接发布源代码来进行的，当然除了源代码外还要附带帮助手册、配置文件等等附带品。源代码给与了人们足够的自由度，把选择权全部都交给了使用者，使用者在编译源代码时就可以依据自己的需求来设定编译选项和参数，编译后就能得到自己想要的软件，并且由于源代码并不依赖于硬件平台和其他环境，所以即使环境与发布者的环境大相径庭也不会影响软件的编译和使用。但是，自由度也就意味着足够的复杂，对于不清楚这个软件源代码的人来说，他需要先阅读帮助手册和配置文件等信息，对软件有足够的了解，才能知道每一个选项的意义，才能为自己量身定制合适的软件，但是这个事情过于复杂和繁琐，对于只想使用软件的人来说，如果使用软件之前还需要学习编译原理和文件系统组织结构这些东西，那也太痛苦了。
+
+
+
+
+
+
+
+所以你是不是就想到了作者为什么不可以直接发布对应各个硬件平台（i386、i586、i686、x86_64、powerpc等等）的二进制文件，这样使用者只需要将对应自己平台的二进制文件下载下来不就可以使用了吗？看起来好像问题已经解决了，其实并没有完全解决。将二进制文件下载下来后，有些软件会包含可执行文件、库文件、帮助手册、配置文件等文件，你还需要对你的系统有足够的了解，知道哪些文件应该放到哪个目录下才能被正确的使用。而且当你将文件放到了正确的位置后，你发现安装的程序版本不对，然后你又需要将好不容易放好的文件一个一个找出来删除掉，当你系统上的文件非常多、安装的时间离现在非常久的时候，你要删除一个文件是非常困难的，除非你在安装的时候把每个文件对应的安装位置记载了小本本上（虽然翻小本本也要花费不少时间）。
+
+
+
+
+
+
+
+既然手动安装程序这么麻烦，那有没有更方便一些的东西，能够帮助我们完成这个安装过程，还能记住安装的位置呢？当然是有的，这个东西就称为软件包，在CentOS系统上使用的软件包为RPM软件包，Debian系统上使用的是deb软件包。软件包类似于windows上的安装程序，我们知道windows上的安装程序也是分版本的，比如windows xp、windows 7、windows 8，还要区分32位和64位系统，我们需要根据自己系统的情况来下载对应版本的安装程序，然后我们就可以通过简单地点击下一步来完成软件的安装。并且在软件包中还会维护有一个数据库，里面记录了软件的安装位置、软件包中的文件清单等信息以方便软件的安装和卸载。
+
+
+
+
+
+
+
+# 二、RPM简介
+
+
+
+
+RPM（Redhat Package Manager）是由redhat公司开发出来的一种软件包管理工具，并且由RPM管理的软件包的后缀名也叫.rpm。为了制作rpm软件包，首先发行软件包的厂家（可能是软件的制作者、可能是大型公司、可能是社区集团）会将软件发行者发布的软件源代码在各个硬件平台之上编译，获得多个arch的二进制文件后，按照RPM的封装机制，将获得的文件封装成一个rpm包，里面记录了软件的大小、软件的运行环境、软件的版本、文件清单、软件包的依赖关系等信息。使用者只要根据自己的硬件环境下载相应的rpm包，然后将其安装后即可使用这个软件。
+
+
+
+
+
+
+
+如果需要卸载rpm包呢？RPM在软件包在安装时会维护一个数据库，数据库中记录了这个软件包在执行安装后，其中的文件都安装到什么位置去了，在卸载时，RPM可以读取数据库中的记录，找到相应的文件将其删除。
+
+
+
+
+
+
+
+不知道你有没有注意到我在上面提到的，rpm包中记录了软件包的依赖关系，什么是软件包的依赖关系呢？我们知道，在制作rpm包的时候，厂家需要将源代码进行编译，在编译的时候是需要通过编译选项来开启或者关闭软件的某些特性的，那么问题就来了，厂家该如何编译这个软件呢？假如有95%的人都只会使用到软件的功能集1，而又5%的人会额外使用到软件的功能集2，如果厂家只编译软件的功能集1，那5%的人该怎么办，如果厂家除了功能集1之外，又额外编译了功能集2，那么这个rpm包势必会变大，大的程度还要取决于功能的多少，况且即便只是多出了一点点功能，但是我们都知道功能越多，软件出BUG的可能性也就越大，如果用你做出来的这个rpm包安装后的软件充满了bug，那么这个rpm包还有什么意义？
+
+
+
+
+
+
+
+为了解决这个问题，厂家就将一个大的软件包拆分为多个小的软件包，每个软件包只完成几乎单一的功能，比如mysql-5.1.71-1.el6.x86_64.rpm这个程序包，其中只包含了mysq客户端以及辅助mysq客户端用的工具，还有mysql客户端的帮助手册，mysql客户端依赖的库。而mysql-devel-5.1.71-1.el6.x86_64.rpm则会包含开发mysql所需的库文件、帮助手册等信息。使用者在下载时就只需要选择自己需要的功能进行下载即可。而一旦一个大的包被拆散成了小包，那么小包之间就势必会有一些关联关系，所以就会出现软件包与软件包之间的依赖，比如A包依赖于B包，所以在安装A包之前必须要安装B包，否则安装了A包也是白搭。此外我们也知道，在编译时也会依赖一些库文件，所以软件包也是如此，在安装时有些软件包也会依赖某些库文件，而这些库文件存在于另外的软件包中，所以就需要先安装其他的软件包。
+
+
+
+
+
+
+
+虽然rpm包中记录有软件包的依赖关系，但是它并不会为你解决这个依赖关系，也就是说，如果A包依赖于B包，你的系统上并没有安装B包，那么在安装A包时将会报错，当然你可以强制安装A包，但是这并没有太大的意义不是吗。
+
+
+
+
+ 
+
+
+
+
+## RPM包的命名方式
+
+
+
+    
+    mysql    -   5.1.71      -           1         -     el6     -     x86_64       .rpm
+    软件名称     软件的版本号         软件包发行的版本号      操作系统      适合的硬件平台    扩展名
+
+
+
+
+**软件名称**: rpm包中封装的软件的名称
+
+
+
+
+**软件的版本号**: rpm包中封装的软件的版本号
+
+
+
+
+**软件包发行的版本号**: rpm包的发行版本号，注意不是软件的版本号，rpm包的每次修订也会产生新的版本号
+
+
+
+
+**操作系统**: 该rpm包适用的操作系统
+
+
+
+
+**适合的硬件平台**: 该rpm包适用的硬件平台
+
+
+
+
+#   
+
+ 三、YUM简介
+
+
+
+
+为了解决rpm包的依赖关系，于是就有人提出了yum机制。在yum机制中存在着yum 客户端（client）和yum 服务器端（server），在yum服务器端上有一个叫做仓库（repository）的容器存放着一系列的软件包，并且根据这些软件包的头信息（header）生成一张清单，清单中记录了这个yum服务器中提供的软件包以及软件包之间的依赖关系等信息。当yum客户端向yum服务器端发起安装软件的请求时，yum客户端会先下载服务器端的那个清单，通过分析清单中的依赖关系并将清单与本机的RPM数据库中维护的清单做比较，就能得知各个软件包安装的先后次序以及哪些软件包需要安装哪些软件包以及安装，便能够直接将需要的软件包安装完成。
+
+
+
+
+
+
+
+# 四、rpm命令
+
+
+
+
+在CentOS 7系统上，RPM包管理工具就是rpm，它负责软件包的安装、卸载、升级、查询、校验、数据库维护。下面就这几个功能对rpm的使用进行介绍。
+
+
+
+
+## 1、安装
+
+
+
+
+**rpm {-i|--install} [install-options] PACKAGE_FILE ... **
+
+
+
+
+**install-options** : 安装或升级时使用的选项
+
+
+
+
+
+
+
+### 常用安装选项
+
+
+
+
+**-h, --hash** : 在安装时打印hash标记（#），每一个#表示2%的安装进度，安装完成后会有50个#。通常与-v一起使用
+
+
+
+
+**-v** : 打印命令处理的详细过程。
+
+
+
+
+**--nodigest** : 在读取包时不对其做包完整性验证。
+
+
+
+
+**--nosignature** : 在读取包时不对其做来源合法性验证。
+
+
+
+
+**--nodeps** : 在安装或者升级包时不对其做依赖检查。也就是说可以无视依赖直接安装。
+
+
+
+
+**--nopre** : 不执行安装前脚本（preinstall script）
+
+
+
+
+**--nopost **: 不执行安装后脚本（postinstall script）
+
+
+
+
+**--nopreun** : 不执行卸载前脚本（preuninstall script）
+
+
+
+
+**--nopostun** : 不执行卸载后脚本（postuninstall script）
+
+
+
+
+**--noscripts** : 等价于 --nopre --nopost --nopreun --nopostun,即不执行任何脚本
+
+
+
+
+**--replacepkgs** : 如果安装时包已经被安装在系统上了，直接替换已被安装的包。
+
+
+
+
+**--test** : 不进行真正的安装操作，只是用于简单地检查和报告潜在的包冲突
+
+
+
+
+### 操作范例
+
+
+
+    
+    [root@edu Packages]# rpm -ivh --test zsh-5.0.2-28.el7.x86_64.rpm   #使用--test测试zsh包的依赖关系，发现没有问题
+    Preparing...                          ################################# [100%]
+    [root@edu Packages]# rpm -ivh zsh-5.0.2-28.el7.x86_64.rpm  #开始安装zsh包，使用的是经典的ivh选项，i表示安装，v表示显示详细过程，h表示显示进度条
+    Preparing...                          ################################# [100%]
+    Updating / installing...
+       1:zsh-5.0.2-28.el7                 ################################# [100%]
+    [root@edu Packages]# rpm -ivh --replacepkgs zsh-5.0.2-28.el7.x86_64.rpm  #使用replacepkgs替换安装，成功
+    Preparing...                          ################################# [100%]
+    Updating / installing...
+       1:zsh-5.0.2-28.el7                 ################################# [100%]
+    [root@edu Packages]# rpm -ivh php-pgsql-5.4.16-42.el7.x86_64.rpm  #尝试安装php-pgsql，发现存在依赖关系，于是安装失败
+    error: Failed dependencies:
+    	php-pdo(x86-64) = 5.4.16-42.el7 is needed by php-pgsql-5.4.16-42.el7.x86_64
+    	libpq.so.5()(64bit) is needed by php-pgsql-5.4.16-42.el7.x86_64
+    [root@edu Packages]# rpm -ivh --nodeps php-pgsql-5.4.16-42.el7.x86_64.rpm   #使用nodeps选项忽略依赖强制安装，安装成功
+    Preparing...                          ################################# [100%]
+    Updating / installing...
+       1:php-pgsql-5.4.16-42.el7          ################################# [100%]
+    
+
+
+
+
+ 
+
+
+
+
+## 2、升级
+
+
+
+
+**rpm {-U|--upgrade} [install-options] PACKAGE_FILE ...**
+
+
+
+
+**rpm {-F|--freshen} [install-options] PACKAGE_FILE ...**
+
+
+
+
+**-U|--upgrade**: 如果包还未被安装，则执行安装操作，如果包已经安装，且将要安装的包版本比较新，就执行升级操作。
+
+
+
+
+**-F|--freshen**: 如果包已经安装，且将要安装的包版本比较新，就执行升级操作，否则不进行任何操作。
+
+
+
+
+
+
+
+### 常用升级选项（注意：上面提到的安装选项也可以用于升级选项）
+
+
+
+
+**--oldpackage** : 允许进行降级安装。即使用旧版本的包替换新版本的包。
+
+
+
+
+**--force** : 类似于使用 --replacepkgs,  --oldpackage
+
+
+
+
+升级操作其实与安装操作非常相似，所以这里就不给出具体操作了。
+
+
+
+
+ 
+
+
+
+
+## 3、查询
+
+
+
+
+**rpm {-q|--query} [select-options] [query-options]**
+
+
+
+
+**select-options** : 用于根据某种规则指定软件包的选项
+
+
+
+
+**query-options** : 查询时使用的选项
+
+
+
+
+ 
+
+
+
+
+### 常用选择选项（select-options）
+
+
+
+
+**-a, --all** : 找到所有已经安装的包
+
+
+
+
+**-f, --file FILE** : 找到这个FILE所在的软件包
+
+
+
+
+**-g, --group GROUP** : 找到这个GROUP中的所有包
+
+
+
+
+**-p, --package PACKAGE_FILE** : 通过未安装的包文件指定包。可以在包还未被安装时对其进行查询或者校验
+
+
+
+
+**--whatprovides CAPABILITY** : 查询提供了指定CAPABILITY 的包（CAPABILITY 可以是文件，也可以是某种功能）
+
+
+
+
+**--whatrequires CAPABILITY** : 查询依赖于指定CAPABILITY的包（CAPABILITY可以是文件，也可以是某种功能）
+
+
+
+
+ 
+
+
+
+
+### 常用查询选项（query-options）
+
+
+
+
+**-l, --list** : 显示指定的包中的所有文件
+
+
+
+
+**--changelog** : 显示指定包的修改日志
+
+
+
+
+**-c, --configfiles** : 只显示指定的包拥有的配置文件
+
+
+
+
+**-d, --docfiles** : 只显示指定的包拥有的帮助文档
+
+
+
+
+**--conflicts** : 显示与指定的包冲突的CAPABILITY 
+
+
+
+
+**-i, --info** : 显示指定的包的详细信息（包括包名、包版本号、包描述）
+
+
+
+
+**--filesbypkg** : 显示包名和包中的所有文件（-l只会显示包中的文件，当选择了多个包时，将无法区分哪些文件属于哪个包）
+
+
+
+
+**--provides** : 显示指定的包提供的CAPABILITY 
+
+
+
+
+**-R, --requires** : 显示指定的包所依赖的CAPABILITY 
+
+
+
+
+**--scripts** : 显示指定的包中使用到的脚本（包含安装前、安装后、卸载前、卸载后脚本）
+
+
+
+
+ 
+
+
+
+
+### 操作范例
+
+
+
+
+**显示所有已被安装的包**
+
+
+
+    
+    [root@edu Packages]# rpm -qa
+    kernel-tools-libs-3.10.0-693.el7.x86_64
+    setup-2.8.71-7.el7.noarch
+    rpm-python-4.11.3-25.el7.x86_64
+    grub2-pc-modules-2.02-0.64.el7.centos.noarch
+    yum-3.4.3-154.el7.centos.noarch
+    gettext-common-devel-0.19.8.1-2.el7.noarch
+    mokutil-12-1.el7.centos.x86_64
+    ncurses-base-5.9-13.20130511.el7.noarch
+    dmidecode-3.0-5.el7.x86_64
+    nss-softokn-freebl-3.28.3-6.el7.x86_64
+    libfastjson-0.99.4-2.el7.x86_64
+    ncurses-libs-5.9-13.20130511.el7.x86_64
+    ustr-1.0.4-16.el7.x86_64
+    libselinux-2.5-11.el7.x86_64
+    util-linux-2.23.2-43.el7.x86_64
+    elfutils-libelf-0.168-8.el7.x86_64
+    selinux-policy-3.13.1-166.el7.noarch
+    ...以下省略
+    
+
+
+
+
+ 
+
+
+
+
+**显示指定的已安装的包的详细信息**
+
+
+
+    
+    [root@edu Packages]# rpm -qi bash  #显示已安装的bash包的详细信息
+    Name        : bash
+    Version     : 4.2.46
+    Release     : 28.el7
+    Architecture: x86_64
+    Install Date: Thu 19 Apr 2018 06:46:14 PM CST
+    Group       : System Environment/Shells
+    Size        : 3663637
+    License     : GPLv3+
+    Signature   : RSA/SHA256, Thu 10 Aug 2017 11:03:40 PM CST, Key ID 24c6a8a7f4a80eb5
+    Source RPM  : bash-4.2.46-28.el7.src.rpm
+    Build Date  : Thu 03 Aug 2017 05:13:21 AM CST
+    Build Host  : c1bm.rdu2.centos.org
+    Relocations : (not relocatable)
+    Packager    : CentOS BuildSystem <http://bugs.centos.org>
+    Vendor      : CentOS
+    URL         : http://www.gnu.org/software/bash
+    Summary     : The GNU Bourne Again shell
+    Description :
+    The GNU Bourne Again shell (Bash) is a shell or command language
+    interpreter that is compatible with the Bourne shell (sh). Bash
+    incorporates useful features from the Korn shell (ksh) and the C shell
+    (csh). Most sh scripts can be run by bash without modification.
+    
+
+
+
+
+ 
+
+
+
+
+**显示指定的包文件的详细信息**
+
+
+
+    
+    [root@edu Packages]# rpm -qip zsh-5.0.2-28.el7.x86_64.rpm 
+    Name        : zsh
+    Version     : 5.0.2
+    Release     : 28.el7
+    Architecture: x86_64
+    Install Date: (not installed)
+    Group       : System Environment/Shells
+    Size        : 5855982
+    License     : MIT
+    Signature   : RSA/SHA256, Fri 11 Aug 2017 04:28:17 AM CST, Key ID 24c6a8a7f4a80eb5
+    Source RPM  : zsh-5.0.2-28.el7.src.rpm
+    Build Date  : Wed 02 Aug 2017 06:52:37 PM CST
+    Build Host  : c1bm.rdu2.centos.org
+    Relocations : (not relocatable)
+    Packager    : CentOS BuildSystem <http://bugs.centos.org>
+    Vendor      : CentOS
+    URL         : http://zsh.sourceforge.net/
+    Summary     : Powerful interactive shell
+    Description :
+    The zsh shell is a command interpreter usable as an interactive login
+    shell and as a shell script command processor.  Zsh resembles the ksh
+    shell (the Korn shell), but includes many enhancements.  Zsh supports
+    command line editing, built-in spelling correction, programmable
+    command completion, shell functions (with autoloading), a history
+    mechanism, and more.
+    
+
+
+
+
+ 
+
+
+
+
+**查询某个文件所在的包**
+
+
+
+    
+    [root@edu Packages]# rpm -qf /etc/fstab 
+    setup-2.8.71-7.el7.noarch
+    
+
+
+
+
+ 
+
+
+
+
+**查询指定的已安装的包中的所有文件**
+
+
+
+    
+    [root@edu Packages]# rpm -ql zip
+    /usr/bin/zip
+    /usr/bin/zipcloak
+    /usr/bin/zipnote
+    /usr/bin/zipsplit
+    /usr/share/doc/zip-3.0
+    /usr/share/doc/zip-3.0/CHANGES
+    /usr/share/doc/zip-3.0/LICENSE
+    /usr/share/doc/zip-3.0/README
+    /usr/share/doc/zip-3.0/README.CR
+    /usr/share/doc/zip-3.0/TODO
+    /usr/share/doc/zip-3.0/WHATSNEW
+    /usr/share/doc/zip-3.0/WHERE
+    /usr/share/doc/zip-3.0/algorith.txt
+    /usr/share/man/man1/zip.1.gz
+    /usr/share/man/man1/zipcloak.1.gz
+    /usr/share/man/man1/zipnote.1.gz
+    /usr/share/man/man1/zipsplit.1.gz
+    
+
+
+
+
+ 
+
+
+
+
+**查询指定的包文件中的所有文件**
+
+
+
+    
+    [root@edu Packages]# rpm -qlp zip-3.0-11.el7.x86_64.rpm 
+    /usr/bin/zip
+    /usr/bin/zipcloak
+    /usr/bin/zipnote
+    /usr/bin/zipsplit
+    /usr/share/doc/zip-3.0
+    /usr/share/doc/zip-3.0/CHANGES
+    /usr/share/doc/zip-3.0/LICENSE
+    /usr/share/doc/zip-3.0/README
+    /usr/share/doc/zip-3.0/README.CR
+    /usr/share/doc/zip-3.0/TODO
+    /usr/share/doc/zip-3.0/WHATSNEW
+    /usr/share/doc/zip-3.0/WHERE
+    /usr/share/doc/zip-3.0/algorith.txt
+    /usr/share/man/man1/zip.1.gz
+    /usr/share/man/man1/zipcloak.1.gz
+    /usr/share/man/man1/zipnote.1.gz
+    /usr/share/man/man1/zipsplit.1.gz
+    
+
+
+
+
+ 
+
+
+
+
+**查询已安装的包中的配置文件**
+
+
+
+    
+    [root@edu Packages]# rpm -qc bash
+    /etc/skel/.bash_logout
+    /etc/skel/.bash_profile
+    /etc/skel/.bashrc
+    
+
+
+
+
+ 
+
+
+
+
+**查询已安装的包中的帮助文档**
+
+
+
+    
+    [root@edu Packages]# rpm -qd zip
+    /usr/share/doc/zip-3.0/CHANGES
+    /usr/share/doc/zip-3.0/LICENSE
+    /usr/share/doc/zip-3.0/README
+    /usr/share/doc/zip-3.0/README.CR
+    /usr/share/doc/zip-3.0/TODO
+    /usr/share/doc/zip-3.0/WHATSNEW
+    /usr/share/doc/zip-3.0/WHERE
+    /usr/share/doc/zip-3.0/algorith.txt
+    /usr/share/man/man1/zip.1.gz
+    /usr/share/man/man1/zipcloak.1.gz
+    /usr/share/man/man1/zipnote.1.gz
+    /usr/share/man/man1/zipsplit.1.gz
+
+
+
+
+ 
+
+
+
+
+ 
+
+
+
+
+## 4、卸载
+
+
+
+
+**rpm {-e|--erase} [--allmatches] [--justdb] [--nodeps] [--noscripts]**  
+
+ ** [--notriggers] [--test] PACKAGE_NAME ...**
+
+
+
+
+
+
+
+### 常用选项
+
+
+
+
+**--nodeps** : 在卸载时不进行依赖关系检查
+
+
+
+
+**--noscripts** : 在卸载时不执行卸载前、卸载后脚本
+
+
+
+
+**--test** : 不执行真正的卸载操作，只是走个过场，假装进行了卸载。一般与-vv一起使用。
+
+
+
+
+ 
+
+
+
+
+### 操作范例
+
+
+
+    
+    [root@edu Packages]# rpm -ehvv --test zsh   #将zsh尝试卸载，但是不进行真正的卸载。可以看见加了-vv选项后有详细的卸载过程
+    D: loading keyring from pubkeys in /var/lib/rpm/pubkeys/*.key
+    D: couldn't find any keys in /var/lib/rpm/pubkeys/*.key
+    D: loading keyring from rpmdb
+    D: opening  db environment /var/lib/rpm cdb:0x401
+    D: opening  db index       /var/lib/rpm/Packages 0x400 mode=0x0
+    D: locked   db index       /var/lib/rpm/Packages
+    D: opening  db index       /var/lib/rpm/Name 0x400 mode=0x0
+    D:  read h#     420 Header SHA1 digest: OK (489efff35e604042709daf46fb78611fe90a75aa)
+    D: added key gpg-pubkey-f4a80eb5-53a7ff4b to keyring
+    D: Using legacy gpg-pubkey(s) from rpmdb
+    D:  read h#     444 Header V3 RSA/SHA256 Signature, key ID f4a80eb5: OK
+    D: opening  db index       /var/lib/rpm/Conflictname 0x400 mode=0x0
+    D: ========== --- zsh-5.0.2-28.el7 x86_64/linux 0x2
+    D: opening  db index       /var/lib/rpm/Requirename 0x400 mode=0x0
+    D: ========== recording tsort relations
+    D:  Requires: /bin/zsh                                      YES (added files)
+    D: ========== tsorting packages (order, #predecessors, #succesors, depth)
+    D:     0    0    0    1   -zsh-5.0.2-28.el7.x86_64
+    D: erasing packages
+    D: Selinux disabled.
+    D: sanity checking 1 elements
+    D: computing 988 file fingerprints
+    D: opening  db index       /var/lib/rpm/Basenames 0x400 mode=0x0
+    D: opening  db index       /var/lib/rpm/Group 0x400 mode=0x0
+    D: opening  db index       /var/lib/rpm/Providename 0x400 mode=0x0
+    D: opening  db index       /var/lib/rpm/Obsoletename 0x400 mode=0x0
+    D: opening  db index       /var/lib/rpm/Triggername 0x400 mode=0x0
+    D: opening  db index       /var/lib/rpm/Dirnames 0x400 mode=0x0
+    D: opening  db index       /var/lib/rpm/Installtid 0x400 mode=0x0
+    D: opening  db index       /var/lib/rpm/Sigmd5 0x400 mode=0x0
+    D: opening  db index       /var/lib/rpm/Sha1header 0x400 mode=0x0
+    Preparing...                          D: computing file dispositions
+    D: 0x00000025     4096     13799061           -1 /
+    ################################# [100%]
+    D: ========== +++ zsh-5.0.2-28.el7 x86_64-linux 0x2
+    D: closed   db index       /var/lib/rpm/Sha1header
+    D: closed   db index       /var/lib/rpm/Sigmd5
+    D: closed   db index       /var/lib/rpm/Installtid
+    D: closed   db index       /var/lib/rpm/Dirnames
+    D: closed   db index       /var/lib/rpm/Triggername
+    D: closed   db index       /var/lib/rpm/Obsoletename
+    D: closed   db index       /var/lib/rpm/Conflictname
+    D: closed   db index       /var/lib/rpm/Providename
+    D: closed   db index       /var/lib/rpm/Requirename
+    D: closed   db index       /var/lib/rpm/Group
+    D: closed   db index       /var/lib/rpm/Basenames
+    D: closed   db index       /var/lib/rpm/Name
+    D: closed   db index       /var/lib/rpm/Packages
+    D: closed   db environment /var/lib/rpm
+    [root@edu Packages]# rpm -evh zsh  #执行真正的卸载操作
+    Preparing...                          ################################# [100%]
+    Cleaning up / removing...
+       1:zsh-5.0.2-28.el7                 ################################# [100%]
+    
+
+
+
+
+ 
+
+
+
+
+## 5、校验
+
+
+
+
+**rpm {-V|--verify} [select-options] [verify-options]**
+
+
+
+
+**select-options** : 用于根据某种规则指定软件包的选项（与查询操作中使用的常用选项相同）
+
+
+
+
+**verify-options** : 校验时使用的选项
+
+
+
+
+ 
+
+
+
+
+一般校验不需要校验选项，直接使用rpm -V [select-options] 即可。
+
+
+
+    
+    [root@edu Packages]# rpm -V zsh
+    S.5....T.    /usr/share/zsh/5.0.2/functions/zmv
+    
+
+
+
+
+ 
+
+
+
+
+一般来说如果你直接执行上面的命令是不会显示错误的，这里是因为我对zmv文件做过了修改。
+
+
+
+
+可以看到校验产生了9个校验位，后面对应的是被校验的文件。如果某个校验位显示的是 .   ,则表示校验通过，否则表示校验不通过。
+
+
+
+
+### 校验位的含义
+
+
+
+
+**S** : 文件的大小发生了改变   
+
+ ** M** : 文件的权限或者文件类型发生了改变  
+
+ ** 5** : 文件的完整性被破坏，一般是通过计算md5 sum。  
+
+ ** D** : 设备文件的主/次设备号不匹配  
+
+ ** L** : 链接文件的路径不匹配  
+
+ ** U** : 属主（user ownership）发生了改变  
+
+ ** G** : 属组（group ownership）发生了改变  
+
+ ** T** : 文件的修改时间发生了改变  
+
+ ** P** : 文件的CAPABILITY 发生了改变
+
+
+
+
+ 
+
+
+
+
+### 操作范例
+
+
+
+    
+    [root@edu Packages]# rm -rf /usr/share/zsh/5.0.2/functions/zkbd  #这里我将zsh包中的zkbd文件删除，并且之前已经修改过zmv文件
+    [root@edu Packages]# rpm -V zsh  #对zsh包进行校验
+    missing     /usr/share/zsh/5.0.2/functions/zkbd  #发现zkbd文件missing了
+    S.5....T.    /usr/share/zsh/5.0.2/functions/zmv  #发现zmv文件的大小发生了改变，文件的完整性被破坏，文件的修改时间发生了改变
+    
+
+
+
+
+ 
+
+
+
+
+## 6、文件完整性验证
+
+
+
+
+文件的完整性验证一般会通过提取文件的特征，生成文件唯一的信息摘要，比如md5、sha256等单向加密算法，然后将其计算出来的校验码加在文件的首部或者尾部。我们知道，任意两个不同的文件（即使内容只差一个字符），他们的特征码都是天差地别的，所以一旦文件被中间人修改，或者文件的部分在传输的过程中出错，只要对文件内容计算一下特征码，然后与附加在文件中的校验码进行对比，如果不同则表示文件发生了修改，我们就可以知道这个文件的内容不完整。
+
+
+
+
+但是，很快细心的同学就会发现，如果文件被中间人截取，中间人可以将其文件内容修改，并且重新计算修改后文件的特征码并且将特征码重新附加在修改后的文件中，最后将文件继续发送给目标。这样一来，我们就无从得知文件的内容是不是发生了修改，因为特征码的校验并没有出错。于是我们就需要知道文件的来源是不是合法的。
+
+
+
+
+ 
+
+
+
+
+## 7、文件来源合法性验证
+
+
+
+
+文件的来源合法性验证一般会通过非对称加密技术，比如rsa加密。首先简单讲一下非对称加密技术，非对称加密技术是为了克服对称加密的缺点开发出来的。假设这样一个场景，Alice和Bob需要秘密通信，但是他们的通信过程可能会被窃听，所以Alice和Bob需要商量好一本加密字典，这个字典中可能写着a-c,b-d,d-f.....，表示a字符加密后为c，b字符加密后为d，d字符加密后为f，这样一来，只要Alice和Bob两个人持有相同的字典，然后Alice根据这本字典加密，比如hello就变成了jgnnq,这个时候，hello称为明文，而jgnnq称为密文，而这本字典就是密钥，Alice根据字典进行加密的方法就称为加密算法，密文是可以直接对外公开的。于是Alice将这串密文向外传输，Bob收到这串密文后，对着字典，将jgnnq重新解释为hello，就得到了明文，Bob对着字典进行翻译的方法就称为解密算法。这个过程中我们发现，Alice和Bob在通信的过程中使用的是同一个密钥，所以这种加密算法称为对称加密算法。
+
+
+
+
+我们很容易就能发现一个问题，这个密钥Alice要如何交给Bob，如果直接见面交换密钥的话，网络上的通信就没有意义了，如果需要通过网络传输，那么密钥很可能会被窃听。所以就有了非对称加密技术，非对称加密算法有两个密钥，一个叫做公钥（public key），一个叫做私钥（private key / secret key），公钥是可以对外公开的，而私钥则需要自己保存，在加密时，使用私钥加密的密文只能使用公钥解密，而使用公钥加密的密文只能使用私钥解密，这个时候，Alice大可以将公钥通过网络传给Bob，然后Bob也将自己的公钥传给Alice，接下来的通信过程就变成了这样: Alice使用Bob的公钥加密一段信息，然后将密文发送给Bob，Bob使用自己的私钥解密密文，然后用Alice的公钥也加密一段信息，然后将密文回复给Alice，Alice收到后使用自己的私钥解密密文，然后就实现了双方通信的安全。即便在中间窃听者得到了Alice和Bob的公钥，也无法使用公钥解密双方公钥加密的数据（因为双方的通信都是使用的公钥加密，而公钥加密只能用私钥解密）。其实上面的通信过程还是有风险，比如Alice接收到的不是Bob的公钥，而是中间人的公钥，Bob也一样，毕竟公钥上有没有写着Alice的名字，所以我们无从判断这个公钥是不是真的是对方的公钥，这就需要牵扯到第三方公信机制了，所以在这里就不再对这个问题展开讲。
+
+
+
+
+讲了这么多非对称加密技术，就是为了说明文件来源合法性的验证方法，在上面我们讲到，由于使用特征码附加在文件中的做法可能会导致文件和特征码一起被修改，所以在这里我们可以这么做。我们先生成文件的特征码，然后使用私钥对特征码进行加密，然后将密文附加在文件中发布到互联网上，接收方通过某种安全的方式（比如数字证书）得到私钥对应的公钥后，就可以使用公钥对密文进行解密得到明文，也就是文件的特征码，然后我们再计算文件的特征码，将其与附加在文件中的特征码进行比对，如果不一致，说明文件在传输的过程中发生了修改。这个时候即便中间人将文件截获并对文件内容进行了修改，也无法修改文件的特征码，因为中间人不知道发布者的私钥，所以就无法对特征码进行加密，如果中间人使用自己的私钥，或者不对特征码进行加密，那么接收方在解密特征码的时候就会发现解密失败，就知道文件被人动过手脚。
+
+
+
+
+这样一来，文件的来源合法性和文件的完整性同时得到了保证，通过提取特征码保证文件的完整性，通过非对称加密技术保证文件来源的合法性。
+
+
+
+
+### 导入公钥
+
+
+
+
+既然需要发布者的公钥来识别文件的来源，那么我们在安装前就需要导入发布者的公钥，可以通过rpm --import PK_PATH命令导入。
+
+
+
+
+[root@edu media]# rpm --import RPM-GPG-KEY-CentOS-7
+
+
+
+
+
+
+
+# 五、YUM命令
+
+
+
+
+正如前面所说，yum解决了rpm包的依赖关系，但是不是说yum就替代了rpm，yum只是为rpm提供了一些拓展的功能，并且让软件的安装更加方便，并不会替代rpm。通过前面的讲述，我们知道yum的架构是C/S（Client/Server）架构，yum 服务器端上面有一个巨大的软件包仓库（repository，以下简称repo），但是实际上，yum的服务器端就是一个能够提供文件服务的服务器，无论是FTP/HTTP/FILE,只要能够提供文件服务，都可以作为yum服务器端，在服务器端上面存放软件包的地方就叫做repo，而且在生成yum仓库时，会扫描整个repo中的软件包的元数据（meta data），然后根据元数据生成一个清单，里面记录了软件包列表、软件包中包含的文件、软件包之间的依赖关系等信息。
+
+
+
+
+而yum客户端就是一个yum命令，当yum客户端向某个服务器端发起请求时，yum客户端会先检查本地有没有之前缓存过的服务器端的清单，如果没有缓存，那么就会向服务器端申请清单，然后缓存到本地，如果已经有缓存了，就会直接使用缓存清单分析软件包依赖。但是这样有个问题，假如在清单缓存的期间服务器端的清单发生了改变，这时候yum客户端却在使用之前缓存的清单，那么就势必会产生一些问题，但是如果为了这个问题，每次安装软件之前都从服务器端下载最新的清单，就会导致安装时间延迟，用户体验不佳，因为一个清单一般都会有好几兆的大小。为了解决这个问题，服务器端在存储清单的同时，也会为清单文件生成一段特征码，保存在服务器端，每次客户端请求时，也会同时将特征码一起缓存到本地，如果下次客户端再次向服务器端发起请求，客户端只需要先下载服务器端的特征码，然后与本地缓存的特征码进行比较，如果特征码不同，表示服务器端的清单发生了修改，那么就下载最新的清单，否则就直接使用已经缓存的清单。
+
+
+
+
+接下来问题又来了，yum客户端该怎么知道向哪个服务器端发起请求呢？这时候我们就需要为yum客户端指明一系列的仓库列表，告诉yum客户端，这个仓库的名字，这个仓库通过何种方式提供软件包，这个仓库在网络中的位置，这个仓库是否可用等信息，而这些信息都会存储在本地的配置文件中，对于CentOS 7 系统，这些信息存储在/etc/yum.conf和/etc/yum.repo.d/*.repo 这些文件中。
+
+
+
+
+##  
+
+
+
+
+## 1、yum配置文件
+
+
+
+
+yum的主配置文件是/etc/yum.conf，而yum仓库的配置文件是位于/etc/yum.repo.d/目录下以.repo结尾的文件。
+
+
+
+
+
+
+
+### 1.1、主配置文件/etc/yum.conf
+
+
+
+
+这其中主要用于定义仓库的配置文件的一些默认属性，而且基本不会改动它，所以这里不对其做介绍，关于该配置文件的可用选项可以通过man yum.conf查看[main] OPTIONS章节获得。
+
+
+
+
+ 
+
+
+
+
+### 1.2、仓库的配置文件/etc/yum.repo.d/*.repo
+
+
+
+
+在说如何配置适当的属性时，先讲一些常用的选项。关于可用选项与选项的含义，可以通过man yum.conf命令查看[repository] OPTIONS章节获得。
+
+
+
+
+**name** : 指明该repo的名字，用于向使用者描述该repo
+
+
+
+
+**baseurl** : 用于指向repo在网络中的位置，该路径下必须包含有repodata目录。可以是http://,ftp://,file:///。可以一次指向多个bashurl。
+
+
+
+
+**mirrorlist** : 用于指向一个网络中的文件，该文件中包含了baseurl的路径，该选项不能与baseurl一起使用。
+
+
+
+
+**enabled** : 指明是否启动该repo，1表示该repo启用，0表示该repo禁用。默认为1.
+
+
+
+
+**enablegroups** : 指明是否允许包组。包组即为将一些提供类似功能的软件包再次打包，包装成一个组向外提供。1表示允许，0表示不允许。默认为1。
+
+
+
+
+**keepcache** : 指明是否保存repo清单的缓存与安装成功后的包。1表示保存，0表示不保存。默认为1.
+
+
+
+
+**gpgcheck** : 指明是否检查包的完整性和来源合法性。1表示检查，0表示不检查。
+
+
+
+
+**gpgkey** : 指明用于包的来源合法性检查的公钥路径。
+
+
+
+
+**failovermethod** : 指明故障转移的方法，roundrobin或者是priority。roundrobin表示从多个bashurl中随机取一个使用，如果访问该bashurl失败，则从剩下的bashurl中再次随机选择一个。priority表示从第一个开始取bashurl，如果第一个访问失败，则顺序访问第二个，依次类推。默认为roundrobin
+
+
+
+
+**username** : 如果提供文件服务的baseurl需要认证，则在这里提供用户名。
+
+
+
+
+**password** : 如果提供文件服务的baseurl需要认证，则在这里提供密码。
+
+
+
+
+ 
+
+
+
+
+### 1.3、配置文件中的变量
+
+
+
+
+在配置文件中使用变量是为了yum仓库的维护者更方便地维护yum 的repo配置文件。我们知道rpm包是区分硬件平台（体系结构）和发行版本（release version），所以针对不同的体系结构，yum仓库会提供不同的rpm包。如下所示: 
+
+
+
+
+https://mirrors.aliyun.com/centos/7/updates/x86_64/
+
+
+
+
+https://mirrors.aliyun.com/centos/7/updates/i386/
+
+
+
+
+https://mirrors.aliyun.com/centos/6/updates/x86_64/
+
+
+
+
+这三个yum仓库就分别为centos 7 和centos 6 的x86_64架构和centos 7 的i386架构提供软件包。
+
+
+
+
+由于体系结构和操作系统的发行版本种类繁多，所以如果为每一种体系结构和操作系统的发行版本都提供不同的repo配置文件会大大增加管理者的负担和维护的成本。所以，利用变量可以将repo配置文件统一，为不同的体系结构和发行版本提供相同的repo配置文件，减轻维护的成本。
+
+
+
+
+ 
+
+
+
+
+**$releasever** : 操作系统的发行版本号（一般是主版本号）。
+
+
+
+
+**$arch** :  硬件平台的体系结构（x86_64, i386, i586 ...）
+
+
+
+
+**$basearch** :  硬件平台的基础体系结构。（比如i686的基础体系结构为i386）
+
+
+
+
+ 
+
+
+
+
+### 1.4、配置范例
+
+
+
+
+创建自定义的repo
+
+
+
+    
+    [root@localhost ~]# cd /etc/yum.repos.d/  #首先进入配置文件目录
+    [root@localhost yum.repos.d]# ls  
+    CentOS-Base.repo  CentOS-Debuginfo.repo  CentOS-Media.repo    CentOS-Vault.repo
+    CentOS-CR.repo    CentOS-fasttrack.repo  CentOS-Sources.repo
+    [root@localhost yum.repos.d]# mkdir backup  #创建一个backup目录
+    [root@localhost yum.repos.d]# mv CentOS-* backup/   #因为这里我要自定义新的repo，所以避免干扰我先将这些已有的repo放入到backup目录中，这样yum客户端就不会检测到这些repo了
+    [root@localhost yum.repos.d]# cp backup/CentOS-Base.repo CentOS-Local.repo  #复制一个repo出来重命名为CentOS-Local.repo,这个配置文件将使用本地的光盘作为repo
+    [root@localhost yum.repos.d]# vim CentOS-Local.repo   #编辑该repo文件
+    [root@localhost yum.repos.d]# cat CentOS-Local.repo   #查看编辑后的内容
+    [local]   #该字段为全局唯一字段，用于标识一个repo
+    name=CentOS-$releasever - Local  #描述该repo的字符串
+    baseurl=file:///media/    #这里使用了本地的光盘文件作为repo
+    enabled=1  #启用该repo
+    gpgcheck=1 #启用来源合法性检查
+    gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7   #指明检查时所需的公钥
+    [root@localhost yum.repos.d]# cp CentOS-Local.repo CentOS-Aliyun.repo   #再复制一个repo命名为CentOS-Aliyun.repo,这个repo配置文件将使用阿里云提供的镜像
+    [root@localhost yum.repos.d]# vim CentOS-Aliyun.repo   #编辑该repo文件
+    [root@localhost yum.repos.d]# cat CentOS-Aliyun.repo   #查看编辑后的内容
+    [base]  #该字段为全局唯一字段，用于标识一个repo
+    name=CentOS-$releasever - Base   #描述该repo的字符串
+    baseurl=https://mirrors.aliyun.com/centos/7/os/x86_64/    #这里使用了阿里云镜像中的centos7中的os目录作为repo，务必记得要指向repodata所在的目录
+    enabled=1
+    gpgcheck=1
+    gpgkey=https://mirrors.aliyun.com/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
+    
+    [updates]
+    name=CentOS-$releasever - Updates
+    baseurl=https://mirrors.aliyun.com/centos/7/updates/x86_64/
+    enabled=1
+    gpgcheck=1
+    gpgkey=https://mirrors.aliyun.com/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
+    
+    [extras]
+    name=CentOS-$releasever - Extras
+    baseurl=https://mirrors.aliyun.com/centos/7/extras/x86_64/
+    enabled=1
+    gpgcheck=1
+    gpgkey=https://mirrors.aliyun.com/centos/7/os/x86_64/RPM-GPG-KEY-CentOS-7
+    
+
+
+
+
+ 
+
+
+
+
+### 1.5、查看是否配置成功
+
+
+
+
+由于网络有些问题，这里我先将需要联网的阿里云仓库禁用掉，但是本地repo和远程repo其实使用方法都是一样的。
+
+
+
+
+如果你有注意的话，你会发现它会去加载yum服务端的repo清单。
+
+
+
+    
+    [root@localhost yum.repos.d]# mv CentOS-Aliyun.repo backup/    #暂时禁用阿里云repo
+    [root@localhost yum.repos.d]# yum clean metadata  #先清空原本的缓存清单
+    已加载插件：fastestmirror, langpacks
+    正在清理软件源： local
+    4 metadata 文件已移除
+    2 sqlite 文件已移除
+    0 metadata 文件已移除
+    [root@localhost yum.repos.d]# yum repolist   #查看可用的repolist，发现我们定义的local repo出现了。
+    已加载插件：fastestmirror, langpacks
+    local                                                                        | 3.6 kB  00:00:00     
+    (1/2): local/group_gz                                                        | 156 kB  00:00:00     
+    (2/2): local/primary_db                                                      | 3.1 MB  00:00:00     
+    Loading mirror speeds from cached hostfile
+    源标识                                    源名称                                               状态
+    local                                     CentOS-7 - Local                                     3,894
+    repolist: 3,894
+    
+
+
+
+
+ 
+
+
+
+
+
+
+
+## 2、yum命令使用
+
+
+
+
+**NAME**
+
+
+
+
+yum - Yellowdog Updater Modified
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+yum is an interactive, rpm based, package manager. It can automatically perform system  
+
+  updates, including dependency analysis and obsolete processing based on "repository" meta‐  
+
+  data. It can also perform installation of new packages, removal of old packages and per‐  
+
+  form queries on the installed and/or available packages among many other commands/services  
+
+  (see below). yum is similar to other high level package managers like apt-get and smart.
+
+
+
+
+
+
+
+### 2.1、yum命令的使用方式
+
+
+
+
+**yum [OPTIONS] [COMMAND] [PACKAGE...]**
+
+
+
+
+**OPTIONS**: yum命令的通用选项
+
+
+
+
+**COMMAND**: yum命令的子命令
+
+
+
+
+**PACKAGE**: 指明要对哪个或者哪些包进行操作
+
+
+
+
+ 
+
+
+
+
+#### 常用选项(OPTIONS)
+
+
+
+
+**-y, --assumeyes** : yum会在安装任何一个包之前询问是否安装，使用-y选项则表示永远回答为yes，表示安装。
+
+
+
+
+**--nogpgcheck** : 在安装时不进行来源合法性检查。
+
+
+
+
+**--skip-broken** : 安装时如果产生了依赖问题，就移除掉那个导致依赖问题的包。
+
+
+
+
+**--downloadonly** : 指明只下载包，不进行包的安装。也可以在安装询问时回答为d，表示只下载包。
+
+
+
+
+**-q, --quiet** : 静默模式安装。即在安装的时候不打印信息。
+
+
+
+
+**-enablerepo=repoidglob** :  在安装时临时启用某个repo。接收repo的id作为参数，可以使用通配符。
+
+
+
+
+**--disablerepo=repoidglob** : 在安装时临时禁用某个repo。接收repo的id作为参数，可以使用通配符。
+
+
+
+
+ 
+
+
+
+
+ 
+
+
+
+
+### 2.2、显示yum的repo列表
+
+
+
+
+**yum repolist [all|enabled|disabled]**
+
+
+
+
+**all** : 显示所有的repo
+
+
+
+
+**enabled** : 只显示可用的repo（enabled=1）
+
+
+
+
+**disabled** : 只显示不可用的repo（enabled=0）
+
+
+
+
+
+
+
+#### 操作范例
+
+
+
+
+显示所有的repo
+
+
+
+    
+    [root@localhost yum.repos.d]# yum repolist all
+    已加载插件：fastestmirror, langpacks
+    Loading mirror speeds from cached hostfile
+    源标识                                 源名称                                            状态
+    local                                  CentOS-7 - Local                                  启用: 3,894
+    repolist: 3,894
+    
+
+
+
+
+ 
+
+
+
+
+
+
+
+### 2.3、显示repo中的程序包
+
+
+
+
+**yum list [all | glob_exp1] [glob_exp2] [...]**
+
+
+
+
+** all** : 显示所有的程序包，默认为all
+
+
+
+
+**glob_exp#** : 显示被通配符所匹配的程序包
+
+
+
+
+**yum list available [glob_exp1] [...]**
+
+
+
+
+显示可被安装的程序包
+
+
+
+
+**yum list updates [glob_exp1] [...]**
+
+
+
+
+显示可以更新已安装程序包的程序包
+
+
+
+
+**yum list installed [glob_exp1] [...]**
+
+
+
+
+显示已安装的程序包
+
+
+
+
+ 
+
+
+
+
+#### 操作范例
+
+
+
+
+显示所有已安装的程序包
+
+
+
+    
+    [root@localhost yum.repos.d]# yum list all
+    已加载插件：fastestmirror, langpacks
+    Loading mirror speeds from cached hostfile
+    已安装的软件包
+    389-ds-base.x86_64                      1.3.6.1-16.el7                 @anaconda
+    389-ds-base-libs.x86_64                 1.3.6.1-16.el7                 @anaconda
+    GConf2.x86_64                           3.2.6-8.el7                    @anaconda
+    GeoIP.x86_64                            1.5.0-11.el7                   @anaconda
+    ModemManager.x86_64                     1.6.0-2.el7                    @anaconda
+    ModemManager-glib.x86_64                1.6.0-2.el7                    @anaconda
+    NetworkManager.x86_64                   1:1.8.0-9.el7                  @anaconda
+    ...以下省略
+
+
+
+
+
+
+
+显示包含php的程序包
+
+
+
+    
+    [root@localhost yum.repos.d]# yum list *php*
+    已加载插件：fastestmirror, langpacks
+    Loading mirror speeds from cached hostfile
+    可安装的软件包
+    php.x86_64                                          5.4.16-42.el7                              local
+    php-cli.x86_64                                      5.4.16-42.el7                              local
+    php-common.x86_64                                   5.4.16-42.el7                              local
+    php-gd.x86_64                                       5.4.16-42.el7                              local
+    php-ldap.x86_64                                     5.4.16-42.el7                              local
+    php-mysql.x86_64                                    5.4.16-42.el7                              local
+    php-odbc.x86_64                                     5.4.16-42.el7                              local
+    php-pdo.x86_64                                      5.4.16-42.el7                              local
+    php-pear.noarch                                     1:1.9.4-21.el7                             local
+    php-pecl-memcache.x86_64                            3.0.8-4.el7                                local
+    php-pgsql.x86_64                                    5.4.16-42.el7                              local
+    php-process.x86_64                                  5.4.16-42.el7                              local
+    php-recode.x86_64                                   5.4.16-42.el7                              local
+    php-soap.x86_64                                     5.4.16-42.el7                              local
+    php-xml.x86_64                                      5.4.16-42.el7                              local
+    php-xmlrpc.x86_64                                   5.4.16-42.el7                              local
+
+
+
+
+ 
+
+
+
+
+### 2.4、安装程序包
+
+
+
+
+**yum install package1 [package2] [...]**
+
+
+
+
+
+
+
+#### 操作范例
+
+
+
+    
+    [root@localhost yum.repos.d]# yum install zsh  #安装仓库中最新版本的zsh
+    Loaded plugins: fastestmirror, langpacks
+    Loading mirror speeds from cached hostfile
+    Resolving Dependencies
+    --> Running transaction check
+    ---> Package zsh.x86_64 0:5.0.2-28.el7 will be installed
+    --> Finished Dependency Resolution
+    
+    Dependencies Resolved
+    
+    ====================================================================================================
+     Package            Arch                  Version                        Repository            Size
+    ====================================================================================================
+    Installing:
+     zsh                x86_64                5.0.2-28.el7                   local                2.4 M
+    
+    Transaction Summary
+    ====================================================================================================
+    Install  1 Package
+    
+    Total download size: 2.4 M
+    Installed size: 5.6 M
+    Is this ok [y/d/N]: y  #这里回答为y表示安装，d表示仅下载，N表示不安装
+    Downloading packages:
+    Running transaction check
+    Running transaction test
+    Transaction test succeeded
+    Running transaction
+      Installing : zsh-5.0.2-28.el7.x86_64                                                          1/1 
+      Verifying  : zsh-5.0.2-28.el7.x86_64                                                          1/1 
+    
+    Installed:
+      zsh.x86_64 0:5.0.2-28.el7                                                                         
+    
+    Complete!
+    
+
+
+
+
+ 
+
+
+
+
+
+
+
+### 2.5、重新安装程序包
+
+
+
+
+**yum reinstall package1 [package2] [...]**
+
+
+
+
+重新安装一个已经被安装过的程序包。
+
+
+
+
+
+
+
+#### 操作范例
+
+
+
+    
+    [root@edu Packages]# yum reinstall zsh
+    Loaded plugins: fastestmirror
+    Loading mirror speeds from cached hostfile
+    Resolving Dependencies
+    --> Running transaction check
+    ---> Package zsh.x86_64 0:5.0.2-28.el7 will be reinstalled
+    --> Finished Dependency Resolution
+    
+    Dependencies Resolved
+    
+    ====================================================================================================
+     Package            Arch                  Version                        Repository            Size
+    ====================================================================================================
+    Reinstalling:
+     zsh                x86_64                5.0.2-28.el7                   local                2.4 M
+    
+    Transaction Summary
+    ====================================================================================================
+    Reinstall  1 Package
+    
+    Total download size: 2.4 M
+    Installed size: 5.6 M
+    Is this ok [y/d/N]: y
+    Downloading packages:
+    Running transaction check
+    Running transaction test
+    Transaction test succeeded
+    Running transaction
+      Installing : zsh-5.0.2-28.el7.x86_64                                                          1/1 
+      Verifying  : zsh-5.0.2-28.el7.x86_64                                                          1/1 
+    
+    Installed:
+      zsh.x86_64 0:5.0.2-28.el7                                                                         
+    
+    Complete!
+    
+
+
+
+
+ 
+
+
+
+
+ 
+
+
+
+
+### 2.6、更新程序包
+
+
+
+
+**yum update [package1] [package2] [...]**
+
+
+
+
+
+
+
+#### 操作范例
+
+
+
+    
+    [root@localhost yum.repos.d]# yum update zsh  #由于已经是repo中的最新版本了，所以这里不会执行更新
+    Loaded plugins: fastestmirror, langpacks
+    Loading mirror speeds from cached hostfile
+    No packages marked for update
+    
+
+
+
+
+ 
+
+
+
+
+
+
+
+### 2.7、将程序包降级
+
+
+
+
+**yum downgrade  [package1] [package2] [...]**
+
+
+
+
+ 
+
+
+
+
+ 
+
+
+
+
+### 2.8、检查程序包可用更新
+
+
+
+
+**yum check-update **
+
+
+
+
+
+
+
+#### 操作范例
+
+
+
+    
+    [root@localhost yum.repos.d]# yum check-update  #由于这里没有可用更新，所以没有显示任何包
+    Loaded plugins: fastestmirror, langpacks
+    Loading mirror speeds from cached hostfile
+
+
+
+
+ 
+
+
+
+
+
+
+
+### 2.9、卸载程序包
+
+
+
+
+**yum remove | erase package1 [package2] [...]**
+
+
+
+
+
+
+
+#### 操作范例
+
+
+
+    
+    [root@localhost yum.repos.d]# yum remove zsh
+    Loaded plugins: fastestmirror, langpacks
+    Resolving Dependencies
+    --> Running transaction check
+    ---> Package zsh.x86_64 0:5.0.2-28.el7 will be erased
+    --> Finished Dependency Resolution
+    
+    Dependencies Resolved
+    
+    ====================================================================================================
+     Package            Arch                  Version                       Repository             Size
+    ====================================================================================================
+    Removing:
+     zsh                x86_64                5.0.2-28.el7                  @local                5.6 M
+    
+    Transaction Summary
+    ====================================================================================================
+    Remove  1 Package
+    
+    Installed size: 5.6 M
+    Is this ok [y/N]: y
+    Downloading packages:
+    Running transaction check
+    Running transaction test
+    Transaction test succeeded
+    Running transaction
+      Erasing    : zsh-5.0.2-28.el7.x86_64                                                          1/1 
+      Verifying  : zsh-5.0.2-28.el7.x86_64                                                          1/1 
+    
+    Removed:
+      zsh.x86_64 0:5.0.2-28.el7                                                                         
+    
+    Complete!
+    
+
+
+
+
+ 
+
+
+
+
+
+
+
+### 2.10、查看程序包的详细信息
+
+
+
+
+**yum info [PACKAGE... ]**
+
+
+
+
+#### 操作范例
+
+
+
+    
+    [root@edu Packages]# yum info bash
+    Loaded plugins: fastestmirror
+    Loading mirror speeds from cached hostfile
+    Installed Packages
+    Name        : bash
+    Arch        : x86_64
+    Version     : 4.2.46
+    Release     : 28.el7
+    Size        : 3.5 M
+    Repo        : installed
+    From repo   : anaconda
+    Summary     : The GNU Bourne Again shell
+    URL         : http://www.gnu.org/software/bash
+    License     : GPLv3+
+    Description : The GNU Bourne Again shell (Bash) is a shell or command language
+                : interpreter that is compatible with the Bourne shell (sh). Bash
+                : incorporates useful features from the Korn shell (ksh) and the C shell
+                : (csh). Most sh scripts can be run by bash without modification.
+    
+
+
+
+
+ 
+
+
+
+
+ 
+
+
+
+
+### 2.11、查看某个特性由哪个程序包提供
+
+
+
+
+**yum provides | whatprovides feature1 [feature2] [...]**
+
+
+
+
+**feature#**: 可以是程序包提供的某个特性，也可以是文件通配符
+
+
+
+
+ 
+
+
+
+
+#### 操作范例
+
+
+
+    
+    [root@edu Packages]# yum provides zsh
+    Loaded plugins: fastestmirror
+    Loading mirror speeds from cached hostfile
+    zsh-5.0.2-28.el7.x86_64 : Powerful interactive shell
+    Repo        : local
+    
+    
+    
+    zsh-5.0.2-28.el7.x86_64 : Powerful interactive shell
+    Repo        : installed
+    
+    
+    
+    [root@edu Packages]# yum provides gcc
+    Loaded plugins: fastestmirror
+    Loading mirror speeds from cached hostfile
+    gcc-4.8.5-16.el7.x86_64 : Various compilers (C, C++, Objective-C, Java, ...)
+    Repo        : local
+    
+    
+    
+    gcc-4.8.5-16.el7.x86_64 : Various compilers (C, C++, Objective-C, Java, ...)
+    Repo        : @anaconda
+    
+    
+    
+    
+
+
+
+
+ 
+
+
+
+
+
+
+
+### 2.12、清除yum产生的缓存文件
+
+
+
+
+**yum clean [ packages | metadata | expire-cache | rpmdb | plugins | all ]**
+
+
+
+
+**packages** : 从远程yum服务器下载软件包时产生的软件包缓存
+
+
+
+
+**metadata** : 从远程服务器获取的清单列表缓存
+
+
+
+
+**expire-cache** : 过期的缓存
+
+
+
+
+**rpmdb** : rpm用于维护软件包元数据信息的一些数据库
+
+
+
+
+**plugins** : yum的插件
+
+
+
+
+**all** : 以上所有缓存
+
+
+
+
+
+
+
+##### 操作范例
+
+
+
+    
+    [root@edu Packages]# yum repolist  #可以看到在有缓存的时候，直接使用了缓存的metadata
+    Loaded plugins: fastestmirror
+    Loading mirror speeds from cached hostfile
+    repo id                                   repo name                                           status
+    !local                                    CentOS-7 - Local                                    3,894
+    repolist: 3,894
+    [root@edu Packages]# yum clean metadata  #这里清除了metadata缓存
+    Loaded plugins: fastestmirror
+    Cleaning repos: local
+    3 metadata files removed
+    2 sqlite files removed
+    0 metadata files removed 
+    [root@edu Packages]# yum repolist  #再次查看时就需要重新下载元数据并缓存
+    Loaded plugins: fastestmirror
+    local                                                                        | 3.6 kB  00:00:00     
+    (1/2): local/group_gz                                                        | 156 kB  00:00:00     
+    (2/2): local/primary_db                                                      | 3.1 MB  00:00:00     
+    Loading mirror speeds from cached hostfile
+    repo id                                   repo name                                           status
+    local                                     CentOS-7 - Local                                    3,894
+    repolist: 3,894
+    
+
+
+
+
+ 
+
+
+
+
+
+
+
+### 2.13、建立缓存
+
+
+
+
+**yum makecache [fast]**
+
+
+
+
+用于下载并且构建元数据缓存。如果传递参数“fast”，那么它只是试图确保缓存是最新的（类似“yum clean expire-cache”）。
+
+
+
+
+ 
+
+
+
+
+
+
+
+### 2.14、以模糊查询搜索软件包
+
+
+
+
+**yum search [string1] [string2] [...]**
+
+
+
+
+**string#**:指定模糊查询时的关键字
+
+
+
+
+search子命令将会优先在package list和summary中试图匹配关键字，如果没有匹配到，就会在description和url中试图匹配关键字。也就是说，search会在包名、概要信息、描述信息、文件路径中试图匹配到给定的关键字。
+
+
+
+
+ 
+
+
+
+
+#### 操作范例
+
+
+
+    
+    [root@edu Packages]# yum search lvm  #使用默认搜索，发现在包名和概要信息中匹配到了lvm
+    Loaded plugins: fastestmirror
+    Loading mirror speeds from cached hostfile
+    ========================================= N/S matched: lvm =========================================
+    lvm2-libs.x86_64 : Shared libraries for lvm2
+    lvm2-python-libs.x86_64 : Python module to access LVM
+    mesa-private-llvm.x86_64 : llvm engine for Mesa
+    libvirt-daemon-driver-storage-logical.x86_64 : Storage driver plugin for lvm volumes
+    lvm2.x86_64 : Userland logical volume management tools
+    lvm2-cluster.x86_64 : Cluster extensions for userland logical volume management tools
+    
+      Name and summary matches only, use "search all" for everything.
+    [root@edu Packages]# yum search all lvm  #如果使用search all，就会额外再描述信息和文件路径中匹配lvm，可以发现匹配到了更多的包
+    Loaded plugins: fastestmirror
+    Loading mirror speeds from cached hostfile
+    =========================================== Matched: lvm ===========================================
+    lvm2-libs.x86_64 : Shared libraries for lvm2
+    lvm2-python-libs.x86_64 : Python module to access LVM
+    mesa-private-llvm.x86_64 : llvm engine for Mesa
+    lvm2.x86_64 : Userland logical volume management tools
+    lvm2-cluster.x86_64 : Cluster extensions for userland logical volume management tools
+    libvirt-daemon-driver-storage-logical.x86_64 : Storage driver plugin for lvm volumes
+    cmirror.x86_64 : Daemon for device-mapper-based clustered mirrors
+    device-mapper-event.x86_64 : Device-mapper event daemon
+    device-mapper-event-libs.x86_64 : Device-mapper event daemon shared library
+    device-mapper-libs.x86_64 : Device-mapper shared library
+    dracut.x86_64 : Initramfs generator using udev
+    libguestfs.x86_64 : Access and modify virtual machine disk images
+    libvirt-daemon-driver-storage.x86_64 : Storage driver plugin including all backends for the libvirtd
+     : daemon
+    libvirt-daemon-driver-storage-core.x86_64 : Storage driver plugin including base backends for the
+     : libvirtd daemon
+    sgpio.x86_64 : SGPIO captive backplane tool
+    system-storage-manager.noarch : A single tool to manage your storage
+    targetd.noarch : Service to make storage remotely configurable
+    
+
+
+
+
+ 
+
+
+
+
+
+
+
+### 2.15、显示指定包的所依赖的文件以及文件所属的包
+
+
+
+
+**yum deplist [package1] [package2] [...]**
+
+
+
+
+
+
+
+#### 操作范例
+
+
+
+    
+    [root@edu Packages]# yum deplist bash
+    Loaded plugins: fastestmirror
+    Loading mirror speeds from cached hostfile
+    package: bash.x86_64 4.2.46-28.el7
+      dependency: libc.so.6(GLIBC_2.15)(64bit)
+       provider: glibc.x86_64 2.17-196.el7
+      dependency: libdl.so.2()(64bit)
+       provider: glibc.x86_64 2.17-196.el7
+      dependency: libdl.so.2(GLIBC_2.2.5)(64bit)
+       provider: glibc.x86_64 2.17-196.el7
+      dependency: libtinfo.so.5()(64bit)
+       provider: ncurses-libs.x86_64 5.9-13.20130511.el7
+      dependency: rtld(GNU_HASH)
+       provider: glibc.x86_64 2.17-196.el7
+
+
+
+
+ 
+
+
+
+
+
+
+
+### 2.16、查看yum的事务历史
+
+
+
+
+**yum history [info|list|packages-list|packages-info|summary|addon-info|redo|undo|rollback]**
+
+
+
+
+**info** : 用于显示某次事务的详细信息。 info子命令接收一个事务id作为参数。也可以接收类似start..end的事务id范围作为参数，将多次事务操作合并为同一个显示。
+
+
+
+
+**list** : 用于显示某次事务的概要信息。list子命令接收一个事务id作为参数。也可以接收all参数表示显示所有事务概要信息。
+
+
+
+
+**packages-list** : 用于显示某个软件包在事务中出现的概要情况。packages-list子命令接收一个软件包名作为参数，可以使用通配符。
+
+
+
+
+**packages-info** :  用于显示某个软件包在事务中出现的详细情况。packages-info子命令接收一个软件包名作为参数，可以使用通配符。
+
+
+
+
+**summary** : 用于显示软件包操作的概要信息。summary 子命令接收一个事务id作为参数。也可以不接收参数，显示所有的概要信息。
+
+
+
+
+**addon-info** :  用于显示某次事务所使用的插件。addon-info子命令接收一个事务id作为参数。也可以不接收参数，显示最后一次事务。
+
+
+
+
+**redo** : 重新执行一次指定的事务。redo子命令接收一个事务id作为参数。也可以指定last参数表示最后一个事务。也可以通过last -OFFSET参数表示从最后一个开始向前偏移OFFSET。
+
+
+
+
+**undo** : 撤销某次事务的执行。undo子命令接收一个事务id作为参数。也可以指定last参数表示最后一个事务。也可以通过last -OFFSET参数表示从最后一个开始向前偏移OFFSET。
+
+
+
+
+**rollback** : 回滚到某次事务执行后的状态，也就是从当前时间点一直撤销到指定的事务执行后的时间点。rollback子命令接收一个事务id作为参数。也可以指定last参数表示最后一个事务。也可以通过last -OFFSET参数表示从最后一个开始向前偏移OFFSET。
+
+
+
+
+ 
+
+
+
+
+ 
+
+
+
+
+### 2.17、yum包组管理
+
+
+
+
+**yum group [install|update|remove|list|info]**
+
+
+
+
+需要注意的是group子命令在3.4.2版本的内核开始启动，而该版本之前并没有group子命令，而是groupinstall、groupupdate、groupremove、grouplist、groupinfo等子命令。
+
+
+
+
+包组就是把一个个独立的软件包根据某些相似的特性包装成一个组，这样在需要某个特性的时候就不需要一个一个包的安装，而是只需要执行一个安装包组的命令，即可自动安装包组中的所有包。
+
+
+
+
+**install** : 安装包组。
+
+
+
+
+**update** : 更新包组。
+
+
+
+
+**remove** : 卸载包组。
+
+
+
+
+**list** : 列出指定的包组，可以使用通配符。
+
+
+
+
+**info** : 显示指定包组中包含的所有软件包。
+
+
+
+
+ 
+
+
+
+
+以下不对安装包组进行示范，但是如果在RHEL 7或者CentOS 7上出现了包组安装错误，请参考（https://access.redhat.com/solutions/1310043），在RHEL 7中的yum包组发生了一些变化，需要使用特定选项安装。
+
+
+
+
+ 
+
+
+
+
+
+
+
+# 六、创建yum仓库
+
+
+
+
+**NAME**
+
+
+
+
+createrepo - Create repomd (xml-rpm-metadata) repository
+
+
+
+
+**DESCRIPTION**
+
+
+
+
+createrepo is a program that creates a repomd (xml-based rpm metadata) repository from a  
+
+  set of rpms.
+
+
+
+
+## 命令用法
+
+
+
+
+**createrepo [options] <directory>**
+
+
+
+
+createrepo命令可以很方便地基于给定的rpm包创建出一个yum仓库所需的元数据（metadata）。虽然createrepo有许多选项，但是除非你是专业人员，否则你不会用到其中的大部分选项。
+
+
+
+
+
+
+
+### 常用选项
+
+
+
+
+**--basedir** : 该选项指定repodata目录所在的路径，默认为当前的工作目录。
+
+
+
