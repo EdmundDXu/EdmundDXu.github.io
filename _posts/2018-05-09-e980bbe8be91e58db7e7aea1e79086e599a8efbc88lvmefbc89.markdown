@@ -970,8 +970,11 @@ lvextend命令用于为逻辑卷拓展空间，也就是为LV分配VG中空闲�
 
 
 **-L|--size [+]Size[m|UNIT]**：指定拓展后的逻辑卷大小，单位可以是m|M|g|G|t|T或更大。如果大小前面有+号，就表示在原有大小的基础上增加给定的大小。
-
-
+**-l|--extents [+]Number[PERCENT] ]**：指定拓展后的逻辑卷的百分比大小，如果大小前面有+号，就表示在原有大小的基础上增加给定的大小。在百分比大小后面可以跟后缀：VG、FREE、PVS、ORIGIN。
+VG：表示整个VG的大小。
+FREE：表示VG的剩余空间大小。（所以lvextend -l +100%FREE表示将VG所有的剩余空间都拓展上）
+PVS：表示指定的PV的剩余空间大小。
+**-r|--resizefs:通知underlying filesystem其底层的device的空间被拓展了。
 
 
     
@@ -983,7 +986,7 @@ lvextend命令用于为逻辑卷拓展空间，也就是为LV分配VG中空闲�
       mylv myvg -wi-ao----  3.00g                                                    
       tlv  tvg  -wi-a----- 10.00g
 
-
+需要注意的是-r选项
 
 
 ###  
