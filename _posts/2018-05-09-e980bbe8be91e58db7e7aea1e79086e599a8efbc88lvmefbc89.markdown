@@ -42,13 +42,13 @@ LVM是怎么做到可以调整分区空间大小的？这就要涉及到LVM中�
  	
   * **物理卷Physical volume (PV)**：物理卷就是底层存储设备，可以是硬盘也可以是硬盘分区，物理卷中有一个特殊的首部（header）标明这个设备是一个物理卷，除了首部之外的空间被分割成了一个个的物理区域（physical extent）。
 
- 	
+
   * **卷组Volume group (VG)**：卷组就是将一个或多个物理卷包含到一起的形成的一个虚拟存储空间
 
- 	
+
   * **逻辑卷Logical volume (LV)**：逻辑卷就类似于硬盘中的分区，只不过逻辑卷是在LVM层次上的分区，且这个分区可以自由调整大小。
 
- 	
+
   * **物理区域Physical extent (PE)**：物理区域就类似于文件系统中的块（block）的概念，是组成文件系统的最小的存储单元，即可以物理卷可以指派给逻辑卷的最小单位。
 
 
@@ -131,7 +131,7 @@ pvs produces formatted output about PVs.
 
 
 
-    
+​    
     [root@edu ~]# pvs
       PV         VG   Fmt  Attr PSize PFree
       /dev/sda7  myvg lvm2 a--  9.98g 6.98g
@@ -176,7 +176,7 @@ pvdisplay命令的使用方法和pvs一样，但是pvdisplay能够显示比pvs�
 
 
 
-    
+​    
     [root@edu ~]# pvdisplay
       --- Physical volume ---
       PV Name               /dev/sda7
@@ -199,7 +199,7 @@ pvdisplay命令的使用方法和pvs一样，但是pvdisplay能够显示比pvs�
       Free PE               639
       Allocated PE          0
       PV UUID               pitjfP-DzMU-u5mP-60Kv-u61J-AKnE-OZZbb8
-    
+
 
 
 
@@ -246,7 +246,7 @@ pvcreate命令用于将存储设备创建成为一个PV，使得存储设备能�
 
 
 
-    
+​    
     [root@edu ~]# pvcreate /dev/sda9
       Physical volume "/dev/sda9" successfully created.
     [root@edu ~]# pvcreate /dev/sda10
@@ -301,7 +301,7 @@ pvremove用于删除一个PV，也就是抹去设备上的PV标签，使其无�
 
 
 
-    
+​    
     [root@edu ~]# pvremove /dev/sda11
       Labels on physical volume "/dev/sda11" successfully wiped.
     [root@edu ~]# pvs
@@ -310,7 +310,7 @@ pvremove用于删除一个PV，也就是抹去设备上的PV标签，使其无�
       /dev/sda7  myvg lvm2 a--    9.98g   6.98g
       /dev/sda8  myvg lvm2 a--    9.98g   9.98g
       /dev/sda9  tvg  lvm2 a--  <10.00g <10.00g
-    
+
 
 
 
@@ -400,11 +400,11 @@ vgs命令用于显示卷组的概要信息。
 
 
 
-    
+​    
     [root@edu ~]# vgs
       VG   #PV #LV #SN Attr   VSize   VFree  
       myvg   2   1   0 wz--n- <19.97g <16.97g
-    
+
 
 
 
@@ -444,7 +444,7 @@ vgdisplay用于显示更详细的卷组信息。
 
 
 
-    
+​    
     [root@edu ~]# vgdisplay 
       --- Volume group ---
       VG Name               myvg
@@ -466,7 +466,7 @@ vgdisplay用于显示更详细的卷组信息。
       Alloc PE / Size       192 / 3.00 GiB
       Free  PE / Size       1086 / <16.97 GiB
       VG UUID               iFthLn-d6NJ-rfKX-KRhO-gYZe-E3L5-mDZI1C
-    
+
 
 
 
@@ -530,14 +530,14 @@ vgcreate用于根据指定的物理卷（PE）创建卷组（VG）。
 
 
 
-    
+​    
     [root@edu ~]# vgcreate -s 4M tvg /dev/sda{9,10}
       Volume group "tvg" successfully created
     [root@edu ~]# vgs
       VG   #PV #LV #SN Attr   VSize   VFree  
       myvg   2   1   0 wz--n- <19.97g <16.97g
       tvg    2   0   0 wz--n-  19.99g  19.99g
-    
+
 
 
 
@@ -589,7 +589,7 @@ vgextend用于扩展VG的空间，将额外的PV添加到VG中，使得VG能为L
 
 
 
-    
+​    
     [root@edu ~]# vgextend tvg /dev/sda11
       Physical volume "/dev/sda11" successfully created.
       Volume group "tvg" successfully extended
@@ -597,7 +597,7 @@ vgextend用于扩展VG的空间，将额外的PV添加到VG中，使得VG能为L
       VG   #PV #LV #SN Attr   VSize   VFree  
       myvg   2   1   0 wz--n- <19.97g <16.97g
       tvg    3   0   0 wz--n-  22.24g  22.24g
-    
+
 
 
 
@@ -648,7 +648,7 @@ vgreduce用于减小VG的空间，将未被使用过的PV从VG中移除。需要
 
 
 
-    
+​    
     [root@edu ~]# pvmove /dev/sda11
       No data to move for tvg
     [root@edu ~]# vgreduce tvg /dev/sda11
@@ -657,7 +657,7 @@ vgreduce用于减小VG的空间，将未被使用过的PV从VG中移除。需要
       VG   #PV #LV #SN Attr   VSize   VFree  
       myvg   2   1   0 wz--n- <19.97g <16.97g
       tvg    2   0   0 wz--n-  19.99g  19.99g
-    
+
 
 
 
@@ -698,7 +698,7 @@ vgremove用于删除VG，如果有VG中有激活的LV时，会提示是否继续
 
 
 
-    
+​    
     [root@edu ~]# vgremove tvg
       Volume group "tvg" successfully removed
     [root@edu ~]# vgs
@@ -706,7 +706,7 @@ vgremove用于删除VG，如果有VG中有激活的LV时，会提示是否继续
       myvg   2   1   0 wz--n- <19.97g <16.97g
     [root@edu ~]# vgremove myvg
     Do you really want to remove volume group "myvg" containing 1 logical volumes? [y/n]: 
-    
+
 
 
 
@@ -751,7 +751,7 @@ lvs命令用于显示逻辑卷的概要信息。
 
 
 
-    
+​    
     [root@edu ~]# lvs
       LV   VG   Attr       LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
       mylv myvg -wi-ao---- 3.00g
@@ -795,7 +795,7 @@ lvdisplay命令用于显示逻辑卷的详细信息。
 
 
 
-    
+​    
     [root@edu ~]# lvdisplay 
       --- Logical volume ---
       LV Path                /dev/myvg/mylv
@@ -897,7 +897,7 @@ lvcreate命令用于在一个卷组中创建一个逻辑卷。
 
 
 
-    
+​    
     [root@edu ~]# lvcreate -L 5G -n tlv tvg
     WARNING: dos signature detected on /dev/tvg/tlv at offset 510. Wipe it? [y/n]: y
       Wiping dos signature on /dev/tvg/tlv.
@@ -968,25 +968,41 @@ lvextend命令用于为逻辑卷拓展空间，也就是为LV分配VG中空闲�
 
 
 
-
 **-L|--size [+]Size[m|UNIT]**：指定拓展后的逻辑卷大小，单位可以是m|M|g|G|t|T或更大。如果大小前面有+号，就表示在原有大小的基础上增加给定的大小。
 **-l|--extents [+]Number[PERCENT] ]**：指定拓展后的逻辑卷的百分比大小，如果大小前面有+号，就表示在原有大小的基础上增加给定的大小。在百分比大小后面可以跟后缀：VG、FREE、PVS、ORIGIN。
-VG：表示整个VG的大小。
-FREE：表示VG的剩余空间大小。（所以lvextend -l +100%FREE表示将VG所有的剩余空间都拓展上）
-PVS：表示指定的PV的剩余空间大小。
-**-r|--resizefs:通知underlying filesystem其底层的device的空间被拓展了。
+`VG：表示整个VG的大小。`
+`FREE：表示VG的剩余空间大小。（所以lvextend -l +100%FREE表示将VG所有的剩余空间都拓展上）`
+`PVS：表示指定的PV的剩余空间大小。`
+**-r|--resizefs:通知underlying filesystem其底层的device的空间被拓展了。**
 
 
-    
-    [root@edu ~]# lvextend -L +5G /dev/tvg/tlv 
-      Size of logical volume tvg/tlv changed from 5.00 GiB (1280 extents) to 10.00 GiB (2560 extents).
-      Logical volume tvg/tlv successfully resized.
-    [root@edu ~]# lvs
-      LV   VG   Attr       LSize  Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
-      mylv myvg -wi-ao----  3.00g                                                    
-      tlv  tvg  -wi-a----- 10.00g
+​    
+```bash
+[root@edu ~]# lvextend -L +5G /dev/tvg/tlv 
+  Size of logical volume tvg/tlv changed from 5.00 GiB (1280 extents) to 10.00 GiB (2560 extents).
+  Logical volume tvg/tlv successfully resized.
+[root@edu ~]# lvs
+  LV   VG   Attr       LSize  Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+  mylv myvg -wi-ao----  3.00g                                                    
+  tlv  tvg  -wi-a----- 10.00g
+```
 
-需要注意的是-r选项
+需要注意的是-r选项，默认情况下`lvextend`只会拓展LV的大小，但是并不会拓展其上的filesystem的大小。你需要手动拓展filesystem的大小，来使其意识到其底层的*device* 的空间扩大了。
+
+手动拓展filesystem的方法取决于你的filesystem，对于ext2/ext3/ext4，你可以使用`resize2fs`命令，对于xfs ，你可以使用`xfs_growfs`命令。
+
+但是如果你在`lvextend`时传递了-r选项，那么它会调用`fsadm`来同时拓展你的filesystem大小。
+
+**refer**: [Mounted logical volume size not matching actual volume size](https://unix.stackexchange.com/questions/368695/mounted-logical-volume-size-not-matching-actual-volume-size)
+
+下列命令将当前LV `/dev/centos/home`所在的VG的所有剩余空间都拓展给`/dev/centos/home`，并且同时拓展filesystem的大小。
+
+```bash
+lvextend -l +100%FREE -r /dev/centos/home
+
+```
+
+
 
 
 ###  
@@ -1049,7 +1065,7 @@ lvreduce方法用于缩减逻辑卷的大小，缩减后空闲的PE将会被归�
 
 
 
-    
+​    
     [root@edu ~]# lvreduce -L 8G /dev/tvg/tlv 
       WARNING: Reducing active logical volume to 8.00 GiB.
       THIS MAY DESTROY YOUR DATA (filesystem etc.)
@@ -1111,7 +1127,7 @@ lvremove命令用于将逻辑卷移除，移除后的逻辑卷将会把占用的
 
 
 
-    
+​    
     [root@edu ~]# lvremove /dev/tvg/tlv 
     Do you really want to remove active logical volume tvg/tlv? [y/n]: y
       Logical volume "tlv" successfully removed
@@ -1147,7 +1163,7 @@ lvremove命令用于将逻辑卷移除，移除后的逻辑卷将会把占用的
 
 
 
-    
+
     [root@edu ~]# lvcreate -L 5G -n tlv tvg #首先创建一个逻辑卷
       Logical volume "tlv" created.
     [root@edu ~]# mke2fs -t ext4 /dev/tvg/tlv #然后将该逻辑卷格式化为ext4文件系统
@@ -1225,7 +1241,7 @@ lvremove命令用于将逻辑卷移除，移除后的逻辑卷将会把占用的
 
 
 
-    
+
     [root@edu dev]# umount /mnt #首先将已挂载的设备卸载
     [root@edu dev]# e2fsck -f /dev/tvg/tlv #然后强制检查文件系统的健康状况，此项为必须，在resize2fs之前如果不执行文件系统强制检查，就无法进行文件系统空间的缩减。（针对ext系列文件系统）
     e2fsck 1.42.9 (28-Dec-2013)
@@ -1321,7 +1337,7 @@ lvremove命令用于将逻辑卷移除，移除后的逻辑卷将会把占用的
 
 
 
-    
+
     [root@edu /]# mount /dev/tvg/tlv /mnt #首先将逻辑卷挂载至/mnt目录下
     [root@edu /]# cd /mnt #进入/mnt目录
     [root@edu mnt]# ls #检查是否成功挂载，发现目录中只有lost+found，
@@ -1431,7 +1447,7 @@ lvremove命令用于将逻辑卷移除，移除后的逻辑卷将会把占用的
     104K /opt/pam.d/
     [root@edu pam.d]# ls -l /opt/pam.d/ | wc -l #再次计算/opt/pam.d目录的文件数量，仍然是32
     32
-    
+
 
 
 
